@@ -1,0 +1,53 @@
+# =========================================
+# DEPENDÊNCIAS (Front e Back)
+# =========================================
+node_modules/
+/.pnp
+.pnp.js
+
+# =========================================
+# AMBIENTE E CHAVES SECRETAS (Crítico)
+# =========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+
+# =========================================
+# BUILD DO NEXT.JS (Frontend)
+# =========================================
+fluencyai-frontend/.next/
+fluencyai-frontend/out/
+fluencyai-frontend/build/
+
+# =========================================
+# BUILD DO TYPESCRIPT (Backend)
+# =========================================
+fluencyai-backend/dist/
+fluencyai-backend/build/
+
+# =========================================
+# LOGS DE ERRO
+# =========================================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================================
+# ARQUIVOS DE SISTEMA OPERACIONAL E EDITOR
+# =========================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# =========================================
+# CACHES DA VERCEL / NEXT.JS
+# =========================================
+.vercel
+.eslintcache
