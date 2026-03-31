@@ -5,6 +5,11 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 import multer from 'multer'; // Importamos o multer
 import fs from 'fs'; // Biblioteca nativa para lidar com arquivos
+import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+
+
 
 // Carrega as variáveis do .env
 dotenv.config();
@@ -15,6 +20,11 @@ const PORT = process.env.PORT || 3333;
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+const connectionString = process.env.DATABASE_URL;
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 // Configuração do Multer (vamos salvar os áudios temporariamente na pasta /tmp)
 const upload = multer({ dest: '/tmp/' });
@@ -216,6 +226,59 @@ app.post('/api/tts', async (req, res) => {
   } catch (error) {
     console.error("Erro na geração de áudio:", error);
     res.status(500).json({ error: "Falha ao gerar áudio com a Azure." });
+  }
+});
+
+// Rota 5: Sincronizar Perfil e Obter Estatísticas
+app.post('/api/user/profile', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email é obrigatório para sincronizar." });
+    }
+
+    // 1. Busca o usuário no PostgreSQL (ou cria se for o primeiro login)
+    let user = await prisma.user.findUnique({ where: { email } });
+    
+    if (!user) {
+      user = await prisma.user.create({
+        data: { email, name: name || "Estudante" }
+      });
+      console.log(`Novo usuário sincronizado: ${email}`);
+    }
+
+    // 2. Calcula os dados reais do banco de dados
+    const flashcardsCount = await prisma.flashcard.count({ where: { userId: user.id } });
+    const messagesCount = await prisma.message.count({ where: { userId: user.id } });
+
+    // Lógica de gamificação baseada no seu esforço real
+    // Assumimos ~2 minutos de estudo por mensagem enviada/recebida
+    const studyHours = (messagesCount * 2) / 60; 
+    
+    // Nível dinâmico baseado em quantas palavras (flashcards) você já salvou
+    let currentLevel = "A1";
+    if (flashcardsCount > 20) currentLevel = "A2";
+    if (flashcardsCount > 50) currentLevel = "B1";
+    if (flashcardsCount > 150) currentLevel = "B2";
+    if (flashcardsCount > 300) currentLevel = "C1";
+
+    // Streak (Simplificado: 1 se interagiu, 0 se não. O ideal futuro é checar as datas das mensagens)
+    const streak = messagesCount > 0 ? 1 : 0;
+
+    res.json({
+      userId: user.id, // ID real do PostgreSQL
+      stats: {
+        streak: streak.toString(),
+        words: flashcardsCount.toString(),
+        hours: studyHours.toFixed(1), // Retorna com 1 casa decimal (ex: 1.5)
+        level: currentLevel
+      }
+    });
+
+  } catch (error) {
+    console.error("Erro ao sincronizar perfil:", error);
+    res.status(500).json({ error: "Falha ao obter dados do perfil." });
   }
 });
 
