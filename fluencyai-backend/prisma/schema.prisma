@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 1. Entidade do Aluno
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  // Relacionamentos: Um usuário tem várias mensagens, flashcards e tarefas
+  messages   Message[]
+  flashcards Flashcard[]
+  tasks      KanbanTask[]
+}
+
+// 2. Histórico do Chat
+model Message {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  role      Role     // Enum: USER ou ASSISTANT
+  createdAt DateTime @default(now())
+
+  // Chave estrangeira para o User
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Relação 1 para 1 com a Correção (uma mensagem da IA pode ter uma correção)
+  correction Correction?
+}
+
+enum Role {
+  USER
+  ASSISTANT
+}
+
+// 3. Notas da Professora (Teacher's Note)
+model Correction {
+  id          String @id @default(uuid())
+  original    String @db.Text
+  corrected   String @db.Text
+  explanation String @db.Text
+
+  // Chave estrangeira para a Message
+  messageId   String  @unique
+  message     Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+
+// 4. Repositório de Palavras (Flashcards)
+model Flashcard {
+  id             String   @id @default(uuid())
+  front          String   // A palavra em inglês
+  back           String   // Tradução e explicação
+  
+  // Campos para o algoritmo de repetição espaçada (como o Anki)
+  nextReviewDate DateTime @default(now())
+  interval       Int      @default(0) // Em dias
+  easeFactor     Float    @default(2.5)
+  
+  createdAt      DateTime @default(now())
+
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 5. Cronograma de Estudos (Kanban)
+model KanbanTask {
+  id          String     @id @default(uuid())
+  title       String
+  description String?    @db.Text
+  status      TaskStatus @default(TODO)
+  createdAt   DateTime   @default(now())
+
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum TaskStatus {
+  TODO
+  DOING
+  DONE
+}

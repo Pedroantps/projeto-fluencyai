@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Mic, Send, Volume2, ChevronDown, Sparkles, Loader2 } from "lucide-react"
+import { Mic, Send, Volume2, ChevronDown, Sparkles, Loader2, BookOpen, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // Tipagem das Mensagens
@@ -244,6 +244,8 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
 // Componente Principal da Interface (Continua igual)
 export function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false)
+  const [isGeneratingCards, setIsGeneratingCards] = useState(false)
+  const [flashcards, setFlashcards] = useState<{front: string, back: string}[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
   const [messages, setMessages] = useState<Message[]>([
@@ -298,6 +300,31 @@ export function ChatInterface() {
       }])
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleGenerateFlashcards = async () => {
+    // Pega apenas as mensagens de texto para não mandar IDs e dados inúteis para o Gemini
+    const chatHistory = messages.map(m => ({ role: m.role, content: m.content }));
+    
+    setIsGeneratingCards(true);
+    try {
+      const response = await fetch("http://localhost:3333/api/flashcards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatHistory }),
+      });
+
+      if (!response.ok) throw new Error("Falha ao gerar flashcards");
+
+      const data = await response.json();
+      setFlashcards(data.flashcards);
+      
+    } catch (error) {
+      console.error(error);
+      alert("Não foi possível gerar os flashcards no momento.");
+    } finally {
+      setIsGeneratingCards(false);
     }
   }
 

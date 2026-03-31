@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 import multer from 'multer'; // Importamos o multer
 import fs from 'fs'; // Biblioteca nativa para lidar com arquivos
@@ -20,6 +21,9 @@ const upload = multer({ dest: '/tmp/' });
 
 // Inicializando o cliente Groq
 const groq = new Groq();
+
+// Puxando as credenciais do Gen do .env
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "SUA_API_KEY");
 
 // Rota 1: Transcrever Áudio (Groq Whisper) - NOVA!
 app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
@@ -117,6 +121,54 @@ app.post('/api/chat', async (req, res) => {
   } catch (error) {
     console.error("Erro fatal na comunicação com o Groq:", error);
     res.status(500).json({ error: "Falha na comunicação com a IA." });
+  }
+});
+
+// Rota 4: Gerar Flashcards (Google Gemini)
+app.post('/api/flashcards', async (req, res) => {
+  try {
+    const { chatHistory } = req.body;
+
+    if (!chatHistory || !Array.isArray(chatHistory)) {
+      return res.status(400).json({ error: "O histórico do chat é obrigatório." });
+    }
+
+    // Instancia o modelo ultra-rápido do Gemini
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    // O Prompt de Engenharia para o Gemini
+    const prompt = `
+      Você é um especialista em ensino de idiomas. Analise o seguinte histórico de chat entre um aluno brasileiro e uma professora de inglês (AI).
+      
+      Sua tarefa: Identifique de 3 a 5 palavras, expressões (phrasal verbs) ou regras gramaticais que o aluno errou, teve dificuldade, ou que seriam ótimas para ele revisar.
+      
+      Retorne ESTRITAMENTE um array JSON contendo objetos com "front" (a palavra/frase em inglês) e "back" (a tradução para português + uma dica super curta).
+      Não use formatação markdown, apenas o JSON puro.
+      
+      Exemplo de saída desejada:
+      [
+        { "front": "Went", "back": "Passado de 'go' (ir). Ex: I went to the mall." },
+        { "front": "Playing chess", "back": "Jogar xadrez. O verbo play é usado para esportes e jogos." }
+      ]
+
+      Histórico do Chat:
+      ${JSON.stringify(chatHistory)}
+    `;
+
+    // Chama a API do Google
+    const result = await model.generateContent(prompt);
+    let aiResponseText = result.response.text();
+
+    // Safe Parse: Limpa marcações markdown caso o Gemini as envie
+    aiResponseText = aiResponseText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    const flashcards = JSON.parse(aiResponseText);
+
+    res.json({ flashcards });
+
+  } catch (error) {
+    console.error("Erro ao gerar flashcards com Gemini:", error);
+    res.status(500).json({ error: "Falha ao gerar os flashcards." });
   }
 });
 
