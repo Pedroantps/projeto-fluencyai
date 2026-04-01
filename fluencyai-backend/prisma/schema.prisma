@@ -11,12 +11,15 @@ model User {
   id        String   @id @default(uuid())
   name      String
   email     String   @unique
+  level     String   @default("B1")
+  studyTime  Int      @default(30)
   createdAt DateTime @default(now())
 
   // Relacionamentos: Um usuário tem várias mensagens, flashcards e tarefas
   messages   Message[]
   flashcards Flashcard[]
   tasks      KanbanTask[]
+  wordBank   WordBank[]
 }
 
 // 2. Histórico do Chat
@@ -57,6 +60,9 @@ model Flashcard {
   front          String   // A palavra em inglês
   back           String   // Tradução e explicação
   
+  // NOVA COLUNA: Para saber de onde veio (chat, cronograma, aleatorio)
+  source         String   @default("chat")
+  
   // Campos para o algoritmo de repetição espaçada (como o Anki)
   nextReviewDate DateTime @default(now())
   interval       Int      @default(0) // Em dias
@@ -70,18 +76,29 @@ model Flashcard {
 
 // 5. Cronograma de Estudos (Kanban)
 model KanbanTask {
-  id          String     @id @default(uuid())
+  id          String   @id @default(uuid())
+  type        String   // "video", "flashcard" ou "chat"
   title       String
-  description String?    @db.Text
-  status      TaskStatus @default(TODO)
-  createdAt   DateTime   @default(now())
+  description String?  @db.Text
+  link        String?  // Link do YouTube
+  duration    Int      @default(15) // Duração em minutos
+  completed   Boolean  @default(false) // Substitui o enum, perfeito para a bolinha de check
+  order       Int      @default(0) // Para o Drag and Drop saber a posição
+  date        DateTime // Para saber em qual coluna (Dia da semana) ele vai ficar
+  createdAt   DateTime @default(now())
 
   userId      String
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-enum TaskStatus {
-  TODO
-  DOING
-  DONE
+// Tabela temporária para guardar palavras do Chat
+model WordBank {
+  id        String   @id @default(uuid())
+  word      String
+  context   String?  @db.Text
+  used      Boolean  @default(false) // Fica 'true' quando virar flashcard
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

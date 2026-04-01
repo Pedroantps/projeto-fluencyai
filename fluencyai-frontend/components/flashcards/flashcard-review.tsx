@@ -1,217 +1,208 @@
 "use client"
 
-import { useState } from "react"
-import { Volume2, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react"
+import { useState, useEffect } from "react"
+import { BrainCircuit, Sparkles, RefreshCw, Loader2, XCircle, CheckCircle, Smile } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { auth } from "@/lib/firebase"
 
 interface Flashcard {
   id: string
-  term: string
-  definition: string
-  example: string
-  phonetic?: string
-}
-
-const sampleCards: Flashcard[] = [
-  {
-    id: "1",
-    term: "Serendipity",
-    definition: "The occurrence of events by chance in a happy or beneficial way.",
-    example: "Finding that antique shop was pure serendipity.",
-    phonetic: "/ˌserənˈdipədē/",
-  },
-  {
-    id: "2",
-    term: "Ephemeral",
-    definition: "Lasting for a very short time.",
-    example: "The ephemeral beauty of cherry blossoms attracts millions of visitors.",
-    phonetic: "/əˈfem(ə)rəl/",
-  },
-  {
-    id: "3",
-    term: "Ubiquitous",
-    definition: "Present, appearing, or found everywhere.",
-    example: "Smartphones have become ubiquitous in modern society.",
-    phonetic: "/yo͞oˈbikwədəs/",
-  },
-]
-
-function FlashcardComponent({
-  card,
-  isFlipped,
-  onFlip,
-}: {
-  card: Flashcard
-  isFlipped: boolean
-  onFlip: () => void
-}) {
-  return (
-    /* Fixed height instead of aspect-ratio — avoids overflow on small screens */
-    <div
-      className="relative w-full max-w-lg cursor-pointer perspective-1000"
-      style={{ height: "clamp(200px, 45vw, 280px)" }}
-      onClick={onFlip}
-    >
-      <div
-        className={cn(
-          "absolute inset-0 w-full h-full transition-transform duration-500 transform-style-3d",
-          isFlipped && "rotate-y-180"
-        )}
-      >
-        {/* Front */}
-        <div className="absolute inset-0 w-full h-full backface-hidden">
-          <div className="flex flex-col items-center justify-center h-full px-4 py-5 sm:p-8 rounded-2xl bg-card border border-border/50 shadow-lg">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <span className="text-2xl sm:text-4xl font-semibold text-foreground">{card.term}</span>
-              {card.phonetic && (
-                <span className="text-xs sm:text-sm text-muted-foreground">{card.phonetic}</span>
-              )}
-              <button
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-hover text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="text-xs sm:text-sm">Ouvir Pronuncia</span>
-              </button>
-            </div>
-            <p className="absolute bottom-4 text-xs text-muted-foreground">Toque para ver a resposta</p>
-          </div>
-        </div>
-
-        {/* Back */}
-        <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180">
-          <div className="flex flex-col items-center justify-center h-full px-4 py-5 sm:p-8 rounded-2xl bg-card border border-primary/30 shadow-lg overflow-hidden">
-            <div className="flex flex-col items-center gap-4 text-center max-w-full">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-primary uppercase tracking-wider">Definicao</span>
-                <p className="text-sm sm:text-lg text-foreground leading-snug">{card.definition}</p>
-              </div>
-              <div className="flex flex-col gap-1.5 pt-3 border-t border-border/50 w-full">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Exemplo</span>
-                <p className="text-xs sm:text-sm text-muted-foreground italic">{`"${card.example}"`}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-interface SRSButtonProps {
-  label: string
-  subtext: string
-  variant: "hard" | "good" | "easy"
-  onClick: () => void
-}
-
-function SRSButton({ label, subtext, variant, onClick }: SRSButtonProps) {
-  const variants = {
-    hard: "hover:bg-destructive/10 hover:border-destructive/50 hover:text-destructive",
-    good: "hover:bg-primary/10 hover:border-primary/50 hover:text-primary",
-    easy: "hover:bg-success/10 hover:border-success/50 hover:text-success",
-  }
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-center gap-0.5 px-4 sm:px-8 py-2.5 sm:py-4 rounded-xl bg-surface border border-border/50 transition-all flex-1 sm:flex-none",
-        variants[variant]
-      )}
-    >
-      <span className="text-sm font-medium text-foreground">{label}</span>
-      <span className="text-xs text-muted-foreground">{subtext}</span>
-    </button>
-  )
+  front: string
+  back: string
+  source: string
 }
 
 export function FlashcardReview() {
+  const [cards, setCards] = useState<Flashcard[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
-  const [reviewedCount, setReviewedCount] = useState(0)
+  
+  const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
 
-  const currentCard = sampleCards[currentIndex]
-  const totalCards = sampleCards.length
+  // 1. Vai buscar os cartões que precisam ser revistos hoje
+  const fetchDueCards = async (email: string) => {
+    setLoading(true)
+    try {
+      const res = await fetch(`http://localhost:3333/api/flashcards/due?email=${email}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCards(data)
+      }
+    } catch (error) {
+      console.error("Erro ao procurar flashcards:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const handleFlip = () => setIsFlipped(!isFlipped)
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user?.email) {
+        setUserEmail(user.email)
+        fetchDueCards(user.email)
+      } else {
+        setLoading(false)
+      }
+    })
+    return () => unsubscribe()
+  }, [])
 
-  const handleSRS = (_difficulty: "hard" | "good" | "easy") => {
+  // 2. Chama a IA para Gerar o Deck Inteligente
+  const handleGenerateDeck = async () => {
+    if (!userEmail) return
+    setGenerating(true)
+    try {
+      const res = await fetch("http://localhost:3333/api/flashcards/generate-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail })
+      })
+      if (res.ok) {
+        // Depois de gerar, vai buscar a lista atualizada
+        await fetchDueCards(userEmail)
+      }
+    } catch (error) {
+      console.error("Erro a gerar deck:", error)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  // 3. Avalia o cartão e passa para o próximo
+  const handleReview = async (quality: number) => {
+    const currentCard = cards[currentIndex]
+    
+    // Atualiza o Back-end em segundo plano
+    fetch(`http://localhost:3333/api/flashcards/${currentCard.id}/review`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quality })
+    }).catch(err => console.error("Erro ao guardar revisão", err))
+
+    // Passa para a próxima carta no Front-end
     setIsFlipped(false)
-    setReviewedCount((c) => c + 1)
+    
+    // Pequeno atraso para a animação de virar terminar antes de mudar o texto
     setTimeout(() => {
-      setCurrentIndex((i) => (i + 1) % totalCards)
-    }, 200)
+      setCurrentIndex(prev => prev + 1)
+    }, 150)
   }
 
-  const goToPrevious = () => {
-    setIsFlipped(false)
-    setCurrentIndex((i) => (i === 0 ? totalCards - 1 : i - 1))
+  // --- RENDERIZAÇÃO ---
+
+  if (loading) {
+    return <div className="flex h-64 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
   }
 
-  const goToNext = () => {
-    setIsFlipped(false)
-    setCurrentIndex((i) => (i + 1) % totalCards)
-  }
+  const isFinished = currentIndex >= cards.length
+  const currentCard = cards[currentIndex]
 
   return (
-    <div className="flex flex-col items-center w-full px-3 sm:px-6 py-4 sm:py-8 overflow-y-auto">
-      {/* Progress */}
-      <div className="w-full max-w-lg mb-5 sm:mb-8">
-        <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground mb-2">
-          <span>Progresso da sessao</span>
-          <span>{reviewedCount} de {totalCards}</span>
+    <div className="flex flex-col items-center max-w-2xl mx-auto w-full gap-8 py-8">
+      
+      {/* Cabeçalho */}
+      <div className="flex flex-col items-center text-center gap-2">
+        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-2">
+          <BrainCircuit className="w-6 h-6 text-primary" />
         </div>
-        <div className="h-1.5 rounded-full bg-surface overflow-hidden">
-          <div
-            className="h-full bg-primary rounded-full transition-all duration-300"
-            style={{ width: `${(reviewedCount / totalCards) * 100}%` }}
-          />
-        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Revisão Diária</h1>
+        <p className="text-sm text-muted-foreground">
+          A repetição espaçada é o segredo da fluência.
+        </p>
       </div>
 
-      {/* Navigation */}
-      <div className="flex items-center gap-4 mb-4 sm:mb-6">
-        <button
-          onClick={goToPrevious}
-          className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-surface border border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
-        >
-          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-        </button>
-        <span className="text-sm text-muted-foreground tabular-nums">
-          {currentIndex + 1} / {totalCards}
-        </span>
-        <button
-          onClick={goToNext}
-          className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-surface border border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
-        >
-          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-        </button>
-      </div>
-
-      {/* Flashcard */}
-      <div className="w-full max-w-lg">
-        <FlashcardComponent card={currentCard} isFlipped={isFlipped} onFlip={handleFlip} />
-      </div>
-
-      {/* SRS Controls */}
-      {isFlipped && (
-        <div className="flex items-stretch gap-2 sm:gap-4 mt-5 sm:mt-8 w-full max-w-lg animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <SRSButton label="Errei" subtext="< 1 min" variant="hard" onClick={() => handleSRS("hard")} />
-          <SRSButton label="Bom" subtext="10 min" variant="good" onClick={() => handleSRS("good")} />
-          <SRSButton label="Facil" subtext="4 dias" variant="easy" onClick={() => handleSRS("easy")} />
+      {/* Se não houver cartões ou se já tiver terminado */}
+      {isFinished ? (
+        <div className="flex flex-col items-center justify-center p-8 bg-surface border border-border/50 rounded-2xl w-full text-center gap-6 animate-in fade-in zoom-in duration-500">
+          <div className="w-20 h-20 bg-emerald-400/10 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-10 h-10 text-emerald-500" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-foreground mb-2">Tudo em dia!</h2>
+            <p className="text-muted-foreground text-sm max-w-sm">
+              Não tem mais nenhuma revisão atrasada. Pode descansar ou pedir à IA para preparar material novo.
+            </p>
+          </div>
+          
+          <button 
+            onClick={handleGenerateDeck}
+            disabled={generating}
+            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25 disabled:opacity-50"
+          >
+            {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+            <span>{generating ? "A analisar o seu nível..." : "Gerar Deck com IA"}</span>
+          </button>
         </div>
-      )}
+      ) : (
+        /* O CARTÃO DE REVISÃO E O JOGO */
+        <div className="w-full flex flex-col items-center gap-8">
+          
+          <div className="flex justify-between w-full text-xs font-medium text-muted-foreground px-4">
+            <span>Cartão {currentIndex + 1} de {cards.length}</span>
+            <span className="uppercase tracking-wider text-primary/70 bg-primary/10 px-2 py-0.5 rounded">
+              Origem: {currentCard.source}
+            </span>
+          </div>
 
-      {/* Flip hint */}
-      {!isFlipped && (
-        <button
-          onClick={handleFlip}
-          className="flex items-center gap-2 mt-5 sm:mt-8 px-4 py-2 rounded-lg bg-surface border border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
-        >
-          <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span className="text-xs sm:text-sm">Virar Cartao</span>
-        </button>
+          {/* O Card 3D */}
+          <div 
+            className="w-full aspect-4/3 sm:aspect-video cursor-pointer perspective-1000"
+            onClick={() => setIsFlipped(!isFlipped)}
+          >
+            <div className={cn(
+              "relative w-full h-full transition-all duration-500 transform-style-3d",
+              isFlipped ? "rotate-y-180" : ""
+            )}>
+              
+              {/* FRENTE (Inglês) */}
+              <div className="absolute inset-0 w-full h-full backface-hidden bg-card border-2 border-border/50 rounded-3xl shadow-xl flex flex-col items-center justify-center p-8 text-center hover:border-primary/30 transition-colors">
+                <span className="text-sm font-medium text-muted-foreground mb-6 uppercase tracking-widest">Toque para virar</span>
+                <h3 className="text-3xl sm:text-5xl font-bold text-foreground leading-tight">
+                  {currentCard.front}
+                </h3>
+              </div>
+
+              {/* VERSO (Português + Contexto) */}
+              <div className="absolute inset-0 w-full h-full backface-hidden bg-surface border-2 border-primary/20 rounded-3xl shadow-xl flex flex-col items-center justify-center p-8 text-center rotate-y-180">
+                <h3 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
+                  {currentCard.back}
+                </h3>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Botões de Decisão (Só aparecem se o cartão estiver virado) */}
+          <div className={cn(
+            "flex w-full gap-3 transition-all duration-300",
+            isFlipped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
+          )}>
+            <button 
+              onClick={() => handleReview(0)}
+              className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 text-destructive transition-colors"
+            >
+              <XCircle className="w-6 h-6" />
+              <span className="text-xs font-bold uppercase tracking-wider">Não Sabia</span>
+            </button>
+            <button 
+              onClick={() => handleReview(1)}
+              className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 dark:text-amber-500 transition-colors"
+            >
+              <RefreshCw className="w-6 h-6" />
+              <span className="text-xs font-bold uppercase tracking-wider">Lembrei</span>
+            </button>
+            <button 
+              onClick={() => handleReview(2)}
+              className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 transition-colors"
+            >
+              <Smile className="w-6 h-6" />
+              <span className="text-xs font-bold uppercase tracking-wider">Fácil</span>
+            </button>
+          </div>
+
+        </div>
       )}
     </div>
   )
