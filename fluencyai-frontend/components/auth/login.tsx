@@ -1,6 +1,7 @@
 "use client"
 
 import { Sparkles } from "lucide-react"
+import { toast } from "sonner"
 import { auth, googleProvider } from "@/lib/firebase"
 
 export function Login() {
@@ -8,7 +9,7 @@ export function Login() {
     auth.signInWithPopup(googleProvider)
       .catch((error) => {
         console.error("Erro ao fazer login:", error.message);
-        alert("Falha ao entrar com o Google: " + error.message);
+        toast.error("Não foi possível entrar com o Google. Tente novamente.");
       });
   }
 

@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { Play, MessageCircle, Clock, Check, Loader2, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { auth } from "@/lib/firebase"
+import { useAuth } from "@/components/auth/auth-provider"
+import { getSchedule, resetSchedule, updateTask, type Task, type TaskType, type DaySchedule } from "@/lib/api"
 import { useRouter } from "next/navigation"
 
 // Importa módulos de comportamento de interface Drag and Drop via biblioteca genérica
@@ -14,25 +15,6 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-type TaskType = "video" | "flashcard" | "chat"
-
-interface Task {
-  id: string
-  type: TaskType
-  title: string
-  duration: number
-  completed: boolean
-  link?: string
-  date: string
-  order: number
-}
-
-interface DaySchedule {
-  dayName: string
-  date: string
-  fullDate: string 
-  tasks: Task[]
-}
 
 const taskIcons: Record<TaskType, { icon: React.ElementType; color: string; bg: string }> = {
   video: { icon: Play, color: "text-cyan-400", bg: "bg-cyan-400/10" },
@@ -168,6 +150,7 @@ function DayColumn({ day, isToday, onToggleTask }: { day: DaySchedule; isToday?:
 
 // Controla o layout inteiro do quadro e as ações principais de carregamento e gestão de tarefas
 export function ScheduleKanban() {
+  const { user, loading: authLoading } = useAuth()
   const [schedule, setSchedule] = useState<DaySchedule[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
@@ -175,12 +158,13 @@ export function ScheduleKanban() {
 
   // Recupera e higieniza a malha de agendamento disponível na montagem da tela
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user?.email) {
+    if (authLoading) return
+    let cancelled = false
+    const load = async () => {
+      if (user) {
         try {
-          const res = await fetch(`http://localhost:3333/api/schedule?email=${user.email}`)
-          if (res.ok) {
-            const rawData = await res.json()
+          {
+            const rawData = await getSchedule()
             
             const fixedData = rawData.map((day: DaySchedule) => {
               const [year, month, dayNumber] = day.fullDate.split('T')[0].split('-')
@@ -195,33 +179,28 @@ export function ScheduleKanban() {
               }
             })
 
-            setSchedule(fixedData)
+            if (!cancelled) setSchedule(fixedData)
           }
         } catch (error) {
           console.error("Erro ao buscar cronograma:", error)
         }
       }
-      setLoading(false)
-    })
-    return () => unsubscribe()
-  }, [])
+      if (!cancelled) setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [user, authLoading])
 
   // Exige do servidor e processa a recriação limpa de todas as tarefas de longo prazo
   const handleResetSchedule = async () => {
-    if (!auth.currentUser?.email) return;
+    if (!user) return;
     
     if (!confirm("Isto vai substituir as tarefas pendentes de hoje em diante por uma nova rotina. Tem a certeza?")) return;
 
     setIsGenerating(true);
     try {
-      const res = await fetch(`http://localhost:3333/api/schedule/reset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: auth.currentUser.email })
-      });
-      
-      if (res.ok) {
-        const rawData = await res.json();
+      {
+        const rawData = await resetSchedule();
         
         const fixedData = rawData.map((day: DaySchedule) => {
           const [year, month, dayNumber] = day.fullDate.split('T')[0].split('-')
@@ -258,11 +237,7 @@ export function ScheduleKanban() {
     })))
 
     try {
-      await fetch(`http://localhost:3333/api/schedule/task/${taskId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed: newStatus }),
-      })
+      await updateTask(taskId, { completed: newStatus })
     } catch (error) {
       console.error("Erro ao atualizar tarefa no banco.", error)
     }
@@ -316,11 +291,7 @@ export function ScheduleKanban() {
       })
 
       try {
-        await fetch(`http://localhost:3333/api/schedule/task/${activeId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date: destDay.fullDate }),
-        })
+        await updateTask(activeId, { date: destDay.fullDate })
       } catch (error) {
         console.error("Erro ao mover a tarefa no banco de dados.", error)
       }

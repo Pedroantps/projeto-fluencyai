@@ -3,19 +3,13 @@
 import { useState, useRef, useEffect } from "react"
 import { Mic, Send, Volume2, ChevronDown, Sparkles, Loader2, BookmarkPlus, X, RefreshCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { auth } from "@/lib/firebase" // Precisamos disto para pegar o email
+import { useAuth } from "@/components/auth/auth-provider"
+import { toast } from "sonner"
+import {
+  clearChatHistory, getChatHistory, saveWord, sendChat, synthesizeSpeech, transcribeAudio,
+  type ChatMessage as Message,
+} from "@/lib/api"
 
-// Tipagem das Mensagens
-interface Message {
-  id: string
-  content: string
-  role: "user" | "assistant"
-  correction?: {
-    original: string
-    corrected: string
-    explanation: string
-  }
-}
 
 // ==========================================
 // 1. COMPONENTE VISUAL DO BALÃO DE CHAT
@@ -27,15 +21,7 @@ function ChatBubble({ message, onSaveWord }: { message: Message, onSaveWord?: (c
   // Função para ler o texto (Azure TTS)
   const handleSpeak = async () => {
     try {
-      const response = await fetch("http://localhost:3333/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: message.content }),
-      });
-
-      if (!response.ok) throw new Error("Falha ao obter áudio");
-
-      const blob = await response.blob();
+      const blob = await synthesizeSpeech(message.content);
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
       audio.play();
@@ -145,7 +131,7 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
       setIsRecording(true);
     } catch (error) {
       console.error("Erro ao acessar microfone:", error);
-      alert("Não foi possível acessar o microfone.");
+      toast.error("Não foi possível acessar o microfone.");
     }
   };
 
@@ -160,15 +146,8 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
     setIsTranscribing(true);
     setMessage("Transcribing your voice...");
     try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
-      const response = await fetch("http://localhost:3333/api/transcribe", {
-        method: "POST",
-        body: formData,
-      });
-      if (!response.ok) throw new Error("Falha na transcrição");
-      const data = await response.json();
-      setMessage(data.text); 
+      const data = await transcribeAudio(audioBlob);
+      setMessage(data.text);
     } catch (error) {
       console.error("Erro no Whisper:", error);
       setMessage("Could not transcribe audio. Please type.");
@@ -221,7 +200,7 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
 // 3. COMPONENTE PRINCIPAL (INTERFACE)
 // ==========================================
 export function ChatInterface() {
-  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
@@ -234,11 +213,10 @@ export function ChatInterface() {
   const [isSavingWord, setIsSavingWord] = useState(false)
 
   // Busca o histórico assim que o email estiver disponível
-  const loadHistory = async (email: string) => {
+  const loadHistory = async () => {
     try {
-      const res = await fetch(`http://localhost:3333/api/chat/history?email=${email}`)
-      if (res.ok) {
-        const data = await res.json()
+      {
+        const data = await getChatHistory()
         if (data.length > 0) {
           setMessages(data) // Carrega as 24h
         } else {
@@ -256,14 +234,8 @@ export function ChatInterface() {
   }
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user?.email) {
-        setUserEmail(user.email);
-        loadHistory(user.email);
-      }
-    });
-    return () => unsubscribe();
-  }, [])
+    if (user) loadHistory();
+  }, [user])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -271,22 +243,14 @@ export function ChatInterface() {
 
   // Lógica de Envio de Mensagem (Agora envia o Email junto)
   const handleSend = async (content: string) => {
-    if (!userEmail) return;
+    if (!user) return;
 
     const newUserMessage: Message = { id: Date.now().toString(), role: "user", content }
     setMessages((prev) => [...prev, newUserMessage])
     setIsLoading(true)
 
     try {
-      const response = await fetch("http://localhost:3333/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail, message: content }), // MUDANÇA: enviando email!
-      })
-
-      if (!response.ok) throw new Error("Falha ao comunicar com o servidor.")
-
-      const data = await response.json() 
+      const data = await sendChat(content)
       
       const newAiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -310,7 +274,7 @@ export function ChatInterface() {
 
   // Lógica do NOVO CHAT (Limpa tudo)
   const handleNewChat = async () => {
-    if (!userEmail || isLoading) return;
+    if (!user || isLoading) return;
     
     // Limpa o ecrã instantaneamente
     setMessages([{
@@ -321,27 +285,22 @@ export function ChatInterface() {
 
     try {
       // Pede à base de dados para apagar o histórico
-      await fetch(`http://localhost:3333/api/chat/history?email=${userEmail}`, {
-        method: "DELETE"
-      });
+      await clearChatHistory();
     } catch (error) {
       console.error("Erro ao limpar chat", error);
     }
   }
 
   const handleSaveWord = async () => {
-    if (!wordToSave.trim() || !userEmail) return;
+    if (!wordToSave.trim() || !user) return;
     setIsSavingWord(true);
     try {
-      const res = await fetch("http://localhost:3333/api/words/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail, word: wordToSave.trim(), context: wordContext })
-      });
-      if (res.ok) {
-        setWordToSave("");
-        setWordModalOpen(false);
-      }
+      await saveWord(wordToSave.trim(), wordContext);
+      setWordToSave("");
+      setWordModalOpen(false);
+    } catch (error) {
+      console.error("Erro ao guardar palavra", error);
+      toast.error("Não foi possível guardar a palavra.");
     } finally {
       setIsSavingWord(false);
     }

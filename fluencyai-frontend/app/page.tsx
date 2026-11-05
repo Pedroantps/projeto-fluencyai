@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { firebase, auth } from "@/lib/firebase"
+import { useAuth } from "@/components/auth/auth-provider"
+import { getMe, getSchedule, getDueCards } from "@/lib/api"
 import { Login } from "@/components/auth/login"
 import { Loader2 } from "lucide-react"
 
@@ -20,39 +21,20 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<firebase.User | null>(null)
-  const [loadingAuth, setLoadingAuth] = useState(true)
+  const { user, loading: loadingAuth } = useAuth()
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
-
-  // Monitora e atualiza o estado de autenticação do usuário na montagem do componente
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-      setLoadingAuth(false);
-    });
-    return () => unsubscribe();
-  }, [])
 
   // Centraliza a requisição e a formatação de dados do painel do usuário
   const fetchDashboard = useCallback(async () => {
-    if (!user?.email) return;
+    if (!user) return;
 
     try {
       // Executa chamadas simultâneas aos endpoints desabilitando o cache para garantir precisão
-      const [profileRes, scheduleRes, dueRes] = await Promise.all([
-        fetch('http://localhost:3333/api/user/profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: user.email, name: user.displayName || 'Estudante' }),
-          cache: 'no-store'
-        }),
-        fetch(`http://localhost:3333/api/schedule?email=${user.email}`, { cache: 'no-store' }),
-        fetch(`http://localhost:3333/api/flashcards/due?email=${user.email}`, { cache: 'no-store' })
+      const [profile, rawSchedule, dueCards] = await Promise.all([
+        getMe(user.displayName || 'Estudante'),
+        getSchedule(),
+        getDueCards()
       ]);
-
-      const profile = await profileRes.json();
-      const rawSchedule = await scheduleRes.json();
-      const dueCards = await dueRes.json();
 
       // Padroniza as datas base do calendário do cronograma para prevenir desalinhamento de fuso
       const fixedSchedule = rawSchedule.map((day: any) => {
@@ -68,10 +50,10 @@ export default function DashboardPage() {
 
       // Consolida as métricas chave (KPIs) com base nos retornos processados
       const kpis: KPIData = {
-        streak: parseInt(profile.stats.streak || "0"),
+        streak: Number(profile.stats.streak) || 0,
         reviews: dueCards.length || 0,
-        words: parseInt(profile.stats.words || "0"),
-        conversationMins: Math.round(parseFloat(profile.stats.hours || "0") * 60)
+        words: Number(profile.stats.words) || 0,
+        conversationMins: Math.round((Number(profile.stats.hours) || 0) * 60)
       };
 
       // Identifica e agrupa as tarefas disponíveis para a data atual
