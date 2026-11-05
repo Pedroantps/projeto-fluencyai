@@ -63,6 +63,16 @@ Crie um ficheiro `.env` na pasta `fluencyai-backend` e adicione as suas variáve
 DATABASE_URL="postgresql://user:password@localhost:5432/fluencyai"
 GEMINI_API_KEY="sua_chave_gemini"
 GROQ_API_KEY="sua_chave_groq"
+AZURE_SPEECH_KEY="sua_chave_azure"
+AZURE_SPEECH_REGION="sua_regiao_azure"
+CORS_ORIGINS="http://localhost:3000"
+# Service account do Firebase (usada para validar o login em todas as rotas da API)
+FIREBASE_PROJECT_ID="seu_project_id"
+FIREBASE_CLIENT_EMAIL="..."
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----
+...
+-----END PRIVATE KEY-----
+"
 ```
 Corra as migrações da base de dados e inicie o servidor:
 ```bash
@@ -80,6 +90,7 @@ npm install
 ```
 Crie um ficheiro `.env.local` na pasta `fluencyai-frontend` com as suas chaves do Firebase:
 ```env
+NEXT_PUBLIC_API_URL="http://localhost:3333"
 NEXT_PUBLIC_FIREBASE_API_KEY="sua_chave"
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="seu_dominio"
 NEXT_PUBLIC_FIREBASE_PROJECT_ID="seu_project_id"

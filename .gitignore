@@ -50,4 +50,4 @@ Thumbs.db
 # CACHES DA VERCEL / NEXT.JS
 # =========================================
 .vercel
-.eslintcache
+.eslintcache*.tsbuildinfo
