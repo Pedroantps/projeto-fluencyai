@@ -3,14 +3,8 @@
 import { useState, useEffect } from "react"
 import { BrainCircuit, Sparkles, RefreshCw, Loader2, XCircle, CheckCircle, Smile } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { auth } from "@/lib/firebase"
-
-interface Flashcard {
-  id: string
-  front: string
-  back: string
-  source: string
-}
+import { useAuth } from "@/components/auth/auth-provider"
+import { generateDeck, getDueCards, reviewCard, type Flashcard } from "@/lib/api"
 
 export function FlashcardReview() {
   const [cards, setCards] = useState<Flashcard[]>([])
@@ -19,17 +13,14 @@ export function FlashcardReview() {
   
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const { user, loading: authLoading } = useAuth()
 
   // 1. Vai buscar os cartões que precisam ser revistos hoje
-  const fetchDueCards = async (email: string) => {
+  const fetchDueCards = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`http://localhost:3333/api/flashcards/due?email=${email}`)
-      if (res.ok) {
-        const data = await res.json()
-        setCards(data)
-      }
+      const data = await getDueCards()
+      setCards(data)
     } catch (error) {
       console.error("Erro ao procurar flashcards:", error)
     } finally {
@@ -38,31 +29,22 @@ export function FlashcardReview() {
   }
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user?.email) {
-        setUserEmail(user.email)
-        fetchDueCards(user.email)
-      } else {
-        setLoading(false)
-      }
-    })
-    return () => unsubscribe()
-  }, [])
+    if (authLoading) return
+    if (user) {
+      fetchDueCards()
+    } else {
+      setLoading(false)
+    }
+  }, [user, authLoading])
 
   // 2. Chama a IA para Gerar o Deck Inteligente
   const handleGenerateDeck = async () => {
-    if (!userEmail) return
+    if (!user) return
     setGenerating(true)
     try {
-      const res = await fetch("http://localhost:3333/api/flashcards/generate-batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail })
-      })
-      if (res.ok) {
-        // Depois de gerar, vai buscar a lista atualizada
-        await fetchDueCards(userEmail)
-      }
+      await generateDeck()
+      // Depois de gerar, vai buscar a lista atualizada
+      await fetchDueCards()
     } catch (error) {
       console.error("Erro a gerar deck:", error)
     } finally {
@@ -75,11 +57,7 @@ export function FlashcardReview() {
     const currentCard = cards[currentIndex]
     
     // Atualiza o Back-end em segundo plano
-    fetch(`http://localhost:3333/api/flashcards/${currentCard.id}/review`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quality })
-    }).catch(err => console.error("Erro ao guardar revisão", err))
+    reviewCard(currentCard.id, quality).catch(err => console.error("Erro ao guardar revisão", err))
 
     // Passa para a próxima carta no Front-end
     setIsFlipped(false)

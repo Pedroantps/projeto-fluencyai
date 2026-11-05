@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { Inter, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import { AuthProvider } from '@/components/auth/auth-provider'
+import { Toaster } from '@/components/ui/sonner'
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
@@ -37,7 +39,8 @@ export default function RootLayout({
   return (
     <html lang="en" translate='no' className="dark">
       <body className={`${inter.variable} font-sans antialiased`}>
-        {children}
+        <AuthProvider>{children}</AuthProvider>
+        <Toaster />
         <Analytics />
       </body>
     </html>

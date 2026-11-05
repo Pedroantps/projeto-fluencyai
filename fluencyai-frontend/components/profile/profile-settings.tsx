@@ -5,6 +5,8 @@ import { User, Bell, Moon, Globe, Volume2, Clock, Target, ChevronRight, LogOut, 
 import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
 import { auth, firebase } from "@/lib/firebase"
+import { useAuth } from "@/components/auth/auth-provider"
+import { getMe, updatePreferences } from "@/lib/api"
 import { updateProfile } from "firebase/auth"
 
 interface SettingsItemProps {
@@ -50,6 +52,7 @@ function SettingsSection({ title, children }: { title: string; children: React.R
 }
 
 export function ProfileSettings() {
+  const { user: authUser, loading: authLoading } = useAuth()
   const [user, setUser] = useState<firebase.User | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -74,33 +77,33 @@ export function ProfileSettings() {
   }, [])
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
-      setUser(currentUser)
-      if (currentUser?.displayName) setEditName(currentUser.displayName)
-      
-      if (currentUser?.email) {
-        try {
-          const response = await fetch("http://localhost:3333/api/user/profile", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              email: currentUser.email, 
-              name: currentUser.displayName 
-            }),
-          });
+    if (authLoading) return
+    let cancelled = false
+    const load = async () => {
+      setUser(authUser)
+      if (authUser?.displayName) setEditName(authUser.displayName)
 
-          if (response.ok) {
-            const data = await response.json();
-            setUserStats({ ...data.stats, studyTime: data.stats.studyTime || 30 });
+      if (authUser) {
+        try {
+          const data = await getMe(authUser.displayName)
+          if (!cancelled) {
+            setUserStats({
+              streak: String(data.stats.streak),
+              words: String(data.stats.words),
+              hours: String(data.stats.hours),
+              level: data.stats.level,
+              studyTime: data.stats.studyTime || 30,
+            })
           }
         } catch (error) {
           console.error("Erro ao buscar estatísticas do banco:", error);
         }
       }
-      setLoading(false)
-    })
-    return () => unsubscribe()
-  }, [])
+      if (!cancelled) setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [authUser, authLoading])
 
   const toggleNotification = async (checked: boolean) => {
     setNotifications(checked);
@@ -131,13 +134,9 @@ export function ProfileSettings() {
   const handlePreferenceChange = async (field: 'level' | 'studyTime', value: string | number) => {
     setUserStats(prev => ({ ...prev, [field]: value }));
     
-    if (user?.email) {
+    if (user) {
       try {
-        await fetch("http://localhost:3333/api/user/preferences", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: user.email, [field]: value }),
-        });
+        await updatePreferences({ [field]: value });
       } catch (error) {
         console.error(`Erro ao atualizar ${field}:`, error);
       }
