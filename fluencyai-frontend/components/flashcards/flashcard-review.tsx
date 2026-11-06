@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { BrainCircuit, Sparkles, RefreshCw, Loader2, XCircle, CheckCircle, Smile, Volume2, Headphones } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth/auth-provider"
@@ -19,6 +19,7 @@ export function FlashcardReview() {
   
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const reviewing = useRef(false)
   const { user, loading: authLoading } = useAuth()
 
   // 1. Vai buscar os cartões que precisam ser revistos hoje
@@ -93,6 +94,8 @@ export function FlashcardReview() {
   // 3. Avalia o cartão e passa para o próximo
   const handleReview = async (quality: number) => {
     const currentCard = cards[currentIndex]
+    if (!currentCard || reviewing.current) return
+    reviewing.current = true
 
     // Atualiza o Back-end em segundo plano
     reviewCard(currentCard.id, quality, isDictation ? "dictation" : undefined).catch(err => console.error("Erro ao guardar revisão", err))
@@ -105,6 +108,7 @@ export function FlashcardReview() {
     // Pequeno atraso para a animação de virar terminar antes de mudar o texto
     setTimeout(() => {
       setCurrentIndex(prev => prev + 1)
+      reviewing.current = false
     }, 150)
   }
 
@@ -227,10 +231,21 @@ export function FlashcardReview() {
               </div>
 
               {/* VERSO (Português + Contexto) */}
-              <div className="absolute inset-0 w-full h-full backface-hidden bg-cat-chat rounded-[32px] flex flex-col items-center justify-center p-8 text-center rotate-y-180">
-                <h3 className="text-2xl sm:text-4xl font-medium tracking-tight text-foreground mb-4 text-balance">
-                  {currentCard.back}
-                </h3>
+              <div className="absolute inset-0 w-full h-full backface-hidden bg-cat-chat rounded-[32px] flex flex-col items-center justify-center min-h-0 overflow-y-auto p-8 text-center rotate-y-180">
+                {currentCard.source === "erro" ? (
+                  <>
+                    <h3 className="text-2xl sm:text-4xl font-medium tracking-tight text-foreground mb-3 text-balance">
+                      {currentCard.back.split("\n")[0]}
+                    </h3>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line mb-4">
+                      {currentCard.back.split("\n").slice(1).join("\n").trim()}
+                    </p>
+                  </>
+                ) : (
+                  <h3 className="text-2xl sm:text-4xl font-medium tracking-tight text-foreground mb-4 text-balance">
+                    {currentCard.back}
+                  </h3>
+                )}
                 {currentCard.source === "erro" && (
                   <button
                     type="button"
@@ -285,8 +300,9 @@ export function FlashcardReview() {
           <div className={cn(
             "flex w-full gap-3 transition-all duration-300",
             isFlipped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
-          )}>
+          )} aria-hidden={!isFlipped}>
             <button 
+              disabled={!isFlipped}
               onClick={() => handleReview(0)}
               className="flex-1 flex flex-col items-center gap-1.5 py-4 rounded-3xl bg-cat-streak hover:brightness-95 text-foreground transition"
             >
@@ -294,6 +310,7 @@ export function FlashcardReview() {
               <span className="text-xs font-medium">Não sabia</span>
             </button>
             <button 
+              disabled={!isFlipped}
               onClick={() => handleReview(1)}
               className="flex-1 flex flex-col items-center gap-1.5 py-4 rounded-3xl bg-cat-chat hover:brightness-95 text-foreground transition"
             >
@@ -301,6 +318,7 @@ export function FlashcardReview() {
               <span className="text-xs font-medium">Lembrei</span>
             </button>
             <button 
+              disabled={!isFlipped}
               onClick={() => handleReview(2)}
               className="flex-1 flex flex-col items-center gap-1.5 py-4 rounded-3xl bg-cat-cards hover:brightness-95 text-foreground transition"
             >

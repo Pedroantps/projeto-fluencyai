@@ -13,14 +13,18 @@ export function ErrorBank() {
   const { user, loading: authLoading } = useAuth()
   const [data, setData] = useState<ErrorsResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
   const [creating, setCreating] = useState<string | null>(null)
   const [filter, setFilter] = useState<ErrorCategory | "all">("all")
 
   const fetchErrors = useCallback(async () => {
+    setFailed(false)
     try {
       setData(await getErrors())
     } catch (error) {
       console.error("Erro ao procurar erros:", error)
+      setFailed(true)
+      toast.error("Não foi possível carregar seus erros.")
     } finally {
       setLoading(false)
     }
@@ -73,7 +77,18 @@ export function ErrorBank() {
         <p className="text-sm text-muted-foreground">Os erros que a Ana corrigiu, agrupados por tipo.</p>
       </div>
 
-      {groups.length === 0 ? (
+      {failed && !data ? (
+        <div className="flex flex-col items-center p-8 bg-cat-cards rounded-3xl text-center gap-4">
+          <p className="text-foreground/75 text-sm max-w-sm">Não foi possível carregar seus erros.</p>
+          <button
+            type="button"
+            onClick={() => { setLoading(true); fetchErrors() }}
+            className="px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+          >
+            Tentar de novo
+          </button>
+        </div>
+      ) : groups.length === 0 ? (
         <div className="flex flex-col items-center p-8 bg-cat-cards rounded-3xl text-center gap-4">
           <p className="text-foreground/75 text-sm max-w-sm">
             Nenhum erro por aqui ainda. Converse com a Ana para começar!
