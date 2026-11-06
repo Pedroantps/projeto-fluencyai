@@ -161,5 +161,18 @@ describe('progresso real', () => {
     mocks.prisma.studyActivity.upsert.mockRejectedValueOnce(new Error('db down'));
     const res = await request(app).patch(`/api/flashcards/${UUID}/review`).set(auth).send({ quality: 2 });
     expect(res.status).toBe(200);
+    expect(mocks.prisma.studyActivity.upsert).toHaveBeenCalled();
+  });
+
+  it.each([
+    ['tarefa não-vídeo pendente', { completed: false, type: 'reading', duration: 15 }],
+    ['vídeo já concluído', { completed: true, type: 'video', duration: 15 }],
+  ])('concluir %s não registra atividade', async (_n, task) => {
+    mocks.prisma.kanbanTask.findFirst.mockResolvedValue(task);
+    mocks.prisma.kanbanTask.updateMany.mockResolvedValue({ count: 1 });
+    mocks.prisma.kanbanTask.findFirstOrThrow.mockResolvedValue({ id: UUID });
+    const res = await request(app).patch(`/api/schedule/task/${UUID}`).set(auth).send({ completed: true });
+    expect(res.status).toBe(200);
+    expect(mocks.prisma.studyActivity.upsert).not.toHaveBeenCalled();
   });
 });
