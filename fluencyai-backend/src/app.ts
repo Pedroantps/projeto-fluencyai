@@ -14,6 +14,9 @@ import { speechRouter } from './modules/speech/speech.routes';
 
 export const app = express();
 
+// Atrás do proxy do Render/Railway/Fly: confia só no 1º hop para o IP real do cliente.
+// Sem isso, o rate limit enxerga o IP do proxy e todos os usuários dividem o mesmo limite.
+app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(helmet());
 app.use(cors({ origin: env.CORS_ORIGINS, methods: ['GET', 'POST', 'PATCH', 'DELETE'] }));
