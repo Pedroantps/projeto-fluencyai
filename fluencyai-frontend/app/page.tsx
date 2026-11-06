@@ -54,7 +54,7 @@ export default function DashboardPage() {
         streak: Number(profile.stats.streak) || 0,
         reviews: dueCards.length || 0,
         words: Number(profile.stats.words) || 0,
-        conversationMins: Math.round((Number(profile.stats.hours) || 0) * 60)
+        studyMins: profile.stats.studyMinutes ?? 0
       };
 
       // Identifica e agrupa as tarefas disponíveis para a data atual

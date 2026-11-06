@@ -4,6 +4,8 @@ export interface UserStats {
   streak: string | number
   words: string | number
   hours: string | number
+  studyMinutes: number
+  todayMinutes: number
   level: string
   studyTime: number | null
 }

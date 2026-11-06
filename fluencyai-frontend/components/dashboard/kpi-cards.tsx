@@ -6,7 +6,7 @@ export interface KPIData {
   streak: number;
   reviews: number;
   words: number;
-  conversationMins: number;
+  studyMins: number;
 }
 
 function Stat({ icon, bg, value, label }: { icon: React.ReactNode; bg: string; value: number; label: string }) {
@@ -27,7 +27,7 @@ export function KPICards({ data }: { data: KPIData }) {
       <Stat icon={<Flame className="h-5 w-5" />} bg="bg-cat-streak" value={data.streak} label={data.streak === 1 ? "dia seguido" : "dias seguidos"} />
       <Stat icon={<Layers className="h-5 w-5" />} bg="bg-cat-video" value={data.reviews} label={data.reviews === 1 ? "revisão hoje" : "revisões hoje"} />
       <Stat icon={<Brain className="h-5 w-5" />} bg="bg-cat-cards" value={data.words} label="palavras" />
-      <Stat icon={<MessageCircle className="h-5 w-5" />} bg="bg-cat-chat" value={data.conversationMins} label="min de conversa" />
+      <Stat icon={<MessageCircle className="h-5 w-5" />} bg="bg-cat-chat" value={data.studyMins} label="min de estudo" />
     </div>
   )
 }
