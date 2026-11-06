@@ -5,7 +5,10 @@ import { User, Bell, Moon, Globe, Volume2, Clock, Target, ChevronRight, LogOut, 
 import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
 import { auth, firebase } from "@/lib/firebase"
+import { useAuth } from "@/components/auth/auth-provider"
+import { getMe, updatePreferences } from "@/lib/api"
 import { updateProfile } from "firebase/auth"
+import { useTheme } from "next-themes"
 
 interface SettingsItemProps {
   icon: React.ReactNode
@@ -22,11 +25,11 @@ function SettingsItem({ icon, label, description, children, onClick }: SettingsI
       onClick={onClick}
       // Reduzimos o padding e o gap no mobile (p-3 e gap-3)
       className={cn(
-        "flex items-center gap-3 sm:gap-4 w-full p-3 sm:p-4 rounded-xl bg-card border border-border/50 transition-colors",
-        onClick && "hover:border-primary/30 text-left"
+        "flex items-center gap-3 sm:gap-4 w-full p-3 sm:p-4 rounded-3xl bg-card transition-colors",
+        onClick && "hover:bg-surface-hover text-left"
       )}
     >
-      <div className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-surface text-muted-foreground shrink-0">
+      <div className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-surface text-muted-foreground shrink-0">
         {icon}
       </div>
       <div className="flex-1 min-w-0 pr-2">
@@ -43,13 +46,17 @@ function SettingsItem({ icon, label, description, children, onClick }: SettingsI
 function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{title}</h3>
+      <h3 className="text-sm font-medium text-muted-foreground px-1">{title}</h3>
       <div className="flex flex-col gap-2">{children}</div>
     </div>
   )
 }
 
 export function ProfileSettings() {
+  const { user: authUser, loading: authLoading } = useAuth()
+  const { resolvedTheme, setTheme } = useTheme()
+  const [themeReady, setThemeReady] = useState(false)
+  useEffect(() => setThemeReady(true), [])
   const [user, setUser] = useState<firebase.User | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -74,33 +81,33 @@ export function ProfileSettings() {
   }, [])
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
-      setUser(currentUser)
-      if (currentUser?.displayName) setEditName(currentUser.displayName)
-      
-      if (currentUser?.email) {
-        try {
-          const response = await fetch("http://localhost:3333/api/user/profile", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              email: currentUser.email, 
-              name: currentUser.displayName 
-            }),
-          });
+    if (authLoading) return
+    let cancelled = false
+    const load = async () => {
+      setUser(authUser)
+      if (authUser?.displayName) setEditName(authUser.displayName)
 
-          if (response.ok) {
-            const data = await response.json();
-            setUserStats({ ...data.stats, studyTime: data.stats.studyTime || 30 });
+      if (authUser) {
+        try {
+          const data = await getMe(authUser.displayName)
+          if (!cancelled) {
+            setUserStats({
+              streak: String(data.stats.streak),
+              words: String(data.stats.words),
+              hours: String(data.stats.hours),
+              level: data.stats.level,
+              studyTime: data.stats.studyTime || 30,
+            })
           }
         } catch (error) {
           console.error("Erro ao buscar estatísticas do banco:", error);
         }
       }
-      setLoading(false)
-    })
-    return () => unsubscribe()
-  }, [])
+      if (!cancelled) setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [authUser, authLoading])
 
   const toggleNotification = async (checked: boolean) => {
     setNotifications(checked);
@@ -131,13 +138,9 @@ export function ProfileSettings() {
   const handlePreferenceChange = async (field: 'level' | 'studyTime', value: string | number) => {
     setUserStats(prev => ({ ...prev, [field]: value }));
     
-    if (user?.email) {
+    if (user) {
       try {
-        await fetch("http://localhost:3333/api/user/preferences", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: user.email, [field]: value }),
-        });
+        await updatePreferences({ [field]: value });
       } catch (error) {
         console.error(`Erro ao atualizar ${field}:`, error);
       }
@@ -178,56 +181,56 @@ export function ProfileSettings() {
 
   return (
     // 'overflow-hidden' no contentor principal previne qualquer scroll horizontal acidental
-    <div className="flex flex-col gap-6 max-w-2xl mx-auto pb-24 overflow-hidden w-full">
+    <div className="flex flex-col gap-6 max-w-2xl mx-auto overflow-hidden w-full">
       
       {/* Profile Header */}
-      <div className="flex flex-col items-center gap-4 p-5 sm:p-6 rounded-2xl bg-card border border-border/50 w-full">
+      <div className="flex flex-col items-center gap-4 p-6 rounded-[32px] bg-cat-video w-full">
         <div className="relative">
           {user?.photoURL ? (
             <img 
               src={user.photoURL} 
               alt={user.displayName || "Perfil"} 
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-surface"
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-card"
               referrerPolicy="no-referrer"
             />
           ) : (
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-linear-to-br from-primary to-primary/50 flex items-center justify-center">
-              <span className="text-2xl sm:text-3xl font-bold text-white">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-primary flex items-center justify-center">
+              <span className="text-2xl sm:text-3xl font-medium text-primary-foreground">
                 {getInitials(user?.displayName)}
               </span>
             </div>
           )}
-          <div className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-success border-2 border-card flex items-center justify-center">
-            <span className="text-[10px] sm:text-xs font-bold text-white">{userStats.level}</span>
+          <div className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-card border-2 border-cat-video flex items-center justify-center">
+            <span className="text-[10px] sm:text-xs font-medium text-foreground">{userStats.level}</span>
           </div>
         </div>
         
         <div className="text-center w-full px-4">
-          <h2 className="text-lg sm:text-xl font-semibold text-foreground truncate">
+          <h2 className="text-2xl font-medium tracking-tight text-foreground truncate">
             {user?.displayName || "Usuário FluencyAI"}
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground truncate">
+          <p className="text-xs sm:text-sm text-foreground/70 truncate">
             {user?.email || "Email não informado"}
           </p>
         </div>
 
         {/* Estatísticas com quebra de linha ('leading-tight') para não espremer os ecrãs pequenos */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full mt-2">
-          <div className="flex flex-col items-center p-2 sm:p-3 rounded-xl bg-surface">
-            <span className="text-lg sm:text-xl font-bold text-primary">{userStats.streak}</span>
-            <span className="text-[10px] text-muted-foreground text-center leading-tight">Dias seguidos</span>
+          <div className="flex flex-col items-center p-3 rounded-2xl bg-cat-streak">
+            <span className="text-2xl font-medium tabular text-foreground">{userStats.streak}</span>
+            <span className="text-xs text-foreground/70 text-center leading-tight">Dias seguidos</span>
           </div>
-          <div className="flex flex-col items-center p-2 sm:p-3 rounded-xl bg-surface">
-            <span className="text-lg sm:text-xl font-bold text-primary">{userStats.words}</span>
-            <span className="text-[10px] text-muted-foreground text-center leading-tight">Palavras salvas</span>
+          <div className="flex flex-col items-center p-3 rounded-2xl bg-cat-cards">
+            <span className="text-2xl font-medium tabular text-foreground">{userStats.words}</span>
+            <span className="text-xs text-foreground/70 text-center leading-tight">Palavras salvas</span>
           </div>
-          <div className="flex flex-col items-center p-2 sm:p-3 rounded-xl bg-surface">
-            <span className="text-lg sm:text-xl font-bold text-primary">{userStats.hours}h</span>
-            <span className="text-[10px] text-muted-foreground text-center leading-tight">Horas estudo</span>
+          <div className="flex flex-col items-center p-3 rounded-2xl bg-cat-chat">
+            <span className="text-2xl font-medium tabular text-foreground">{userStats.hours}h</span>
+            <span className="text-xs text-foreground/70 text-center leading-tight">Horas estudo</span>
           </div>
-          <div className="flex flex-col items-center p-2 sm:p-3 rounded-xl bg-surface">
-            <span className="text-lg sm:text-xl font-bold text-primary">{userStats.studyTime}m</span>
-            <span className="text-[10px] text-muted-foreground text-center leading-tight">Meta diária</span>
+          <div className="flex flex-col items-center p-3 rounded-2xl bg-card">
+            <span className="text-2xl font-medium tabular text-foreground">{userStats.studyTime}m</span>
+            <span className="text-xs text-foreground/70 text-center leading-tight">Meta diária</span>
           </div>
         </div>
       </div>
@@ -241,8 +244,8 @@ export function ProfileSettings() {
         />
         
         {/* SELETOR DE NÍVEL RESPONSIVO */}
-        <div className="flex items-center gap-3 sm:gap-4 w-full p-3 sm:p-4 rounded-xl bg-card border border-border/50 transition-colors">
-          <div className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-surface text-muted-foreground shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 w-full p-3 sm:p-4 rounded-3xl bg-card transition-colors">
+          <div className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-surface text-muted-foreground shrink-0">
             <Target className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="flex-1 min-w-0 pr-2">
@@ -253,7 +256,7 @@ export function ProfileSettings() {
           <select 
             value={userStats.level}
             onChange={(e) => handlePreferenceChange('level', e.target.value)}
-            className="bg-surface text-base sm:text-sm text-foreground border border-border/50 rounded-lg px-2 sm:px-3 py-1.5 focus:outline-none focus:border-primary/50 shrink-0 max-w-20 sm:max-w-none"
+            className="bg-surface text-base sm:text-sm text-foreground rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring shrink-0 max-w-20 sm:max-w-none"
           >
             <option value="A1">A1</option>
             <option value="A2">A2</option>
@@ -265,8 +268,8 @@ export function ProfileSettings() {
         </div>
 
         {/* SELETOR DE TEMPO DE ESTUDO RESPONSIVO */}
-        <div className="flex items-center gap-3 sm:gap-4 w-full p-3 sm:p-4 rounded-xl bg-card border border-border/50 transition-colors">
-          <div className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-surface text-muted-foreground shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 w-full p-3 sm:p-4 rounded-3xl bg-card transition-colors">
+          <div className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-surface text-muted-foreground shrink-0">
             <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="flex-1 min-w-0 pr-2">
@@ -276,7 +279,7 @@ export function ProfileSettings() {
           <select 
             value={userStats.studyTime}
             onChange={(e) => handlePreferenceChange('studyTime', parseInt(e.target.value))}
-            className="bg-surface text-base sm:text-sm text-foreground border border-border/50 rounded-lg px-2 sm:px-3 py-1.5 focus:outline-none focus:border-primary/50 shrink-0 max-w-21.25 sm:max-w-none"
+            className="bg-surface text-base sm:text-sm text-foreground rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring shrink-0 max-w-21.25 sm:max-w-none"
           >
             <option value={15}>15 min</option>
             <option value={30}>30 min</option>
@@ -293,14 +296,18 @@ export function ProfileSettings() {
         <SettingsItem icon={<Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />} label="Efeitos Sonoros" description="Sons de botões">
           <Switch checked={soundEffects} onCheckedChange={toggleSound} />
         </SettingsItem>
-        <SettingsItem icon={<Moon className="w-4 h-4 sm:w-5 sm:h-5" />} label="Tema Escuro" description="Sempre ativo">
-          <Switch checked={true} disabled />
+        <SettingsItem icon={<Moon className="w-4 h-4 sm:w-5 sm:h-5" />} label="Tema escuro" description={themeReady && resolvedTheme === "dark" ? "Ativo" : "Desativado"}>
+          <Switch
+            checked={themeReady && resolvedTheme === "dark"}
+            onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+            aria-label="Alternar tema escuro"
+          />
         </SettingsItem>
       </SettingsSection>
 
       <button 
         onClick={() => setShowLogoutModal(true)}
-        className="flex items-center justify-center gap-2 w-full p-3 sm:p-4 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors mt-2"
+        className="flex items-center justify-center gap-2 w-full p-3 sm:p-4 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors mt-2"
       >
         <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
         <span className="text-sm font-medium">Sair da Conta</span>
@@ -309,9 +316,9 @@ export function ProfileSettings() {
       {/* MODAL: EDITAR PERFIL */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card border border-border/50 rounded-2xl p-6 w-full max-w-sm shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
+          <div className="bg-card rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-foreground">Editar Perfil</h3>
+              <h3 className="text-lg font-medium text-foreground">Editar perfil</h3>
               <button onClick={() => setShowEditModal(false)} className="p-2 rounded-full hover:bg-surface text-muted-foreground transition-colors">
                 <X className="w-4 h-4" />
               </button>
@@ -319,21 +326,21 @@ export function ProfileSettings() {
             
             <div className="flex flex-col gap-4 mb-6">
               <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Nome de Exibição</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Nome de exibição</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   placeholder="Seu nome"
                   // 'text-base' previne o zoom nos iPhones
-                  className="w-full bg-surface border border-border/50 rounded-xl px-4 py-3 text-base sm:text-sm text-foreground focus:outline-none focus:border-primary/50"
+                  className="w-full bg-surface rounded-2xl px-4 py-3 text-base sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
             </div>
             
             <button
               onClick={handleSaveProfile} disabled={!editName.trim() || isSavingProfile}
-              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex justify-center"
+              className="w-full py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex justify-center"
             >
               {isSavingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : "Salvar Alterações"}
             </button>
@@ -344,19 +351,19 @@ export function ProfileSettings() {
       {/* MODAL: LOGOUT */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card border border-border/50 rounded-2xl p-6 w-full max-w-sm shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+          <div className="bg-card rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
             <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
               <LogOut className="w-8 h-8 text-destructive" />
             </div>
-            <h3 className="text-xl font-bold text-foreground mb-2">Sair da conta?</h3>
+            <h3 className="text-xl font-medium text-foreground mb-2">Sair da conta?</h3>
             <p className="text-sm text-muted-foreground mb-8">
               Tem certeza que deseja desconectar?
             </p>
             <div className="flex gap-3 w-full">
-              <button onClick={() => setShowLogoutModal(false)} className="flex-1 px-4 py-3 rounded-xl border border-border/50 font-medium hover:bg-surface transition-colors">
+              <button onClick={() => setShowLogoutModal(false)} className="flex-1 px-4 py-3 rounded-full bg-surface font-medium hover:bg-surface-hover transition-colors">
                 Cancelar
               </button>
-              <button onClick={handleLogout} className="flex-1 px-4 py-3 rounded-xl bg-destructive text-destructive-foreground font-medium hover:bg-destructive/90 transition-colors shadow-lg shadow-destructive/20">
+              <button onClick={handleLogout} className="flex-1 px-4 py-3 rounded-full bg-destructive text-destructive-foreground font-medium hover:bg-destructive/90 transition-colors">
                 Sim, Sair
               </button>
             </div>

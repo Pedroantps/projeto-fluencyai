@@ -1,6 +1,7 @@
 "use client"
 
-import { Sparkles } from "lucide-react"
+import { NotebookPen } from "lucide-react"
+import { toast } from "sonner"
 import { auth, googleProvider } from "@/lib/firebase"
 
 export function Login() {
@@ -8,22 +9,22 @@ export function Login() {
     auth.signInWithPopup(googleProvider)
       .catch((error) => {
         console.error("Erro ao fazer login:", error.message);
-        alert("Falha ao entrar com o Google: " + error.message);
+        toast.error("Não foi possível entrar com o Google. Tente novamente.");
       });
   }
 
   return (
     <div className="flex flex-col h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md p-8 rounded-2xl bg-card border border-border/50 shadow-lg text-center flex flex-col items-center">
-        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-6">
-          <Sparkles className="w-8 h-8 text-primary" />
+      <div className="w-full max-w-md p-8 sm:p-10 rounded-[32px] bg-cat-video text-center flex flex-col items-center">
+        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-6">
+          <NotebookPen className="w-8 h-8 text-primary-foreground" />
         </div>
-        <h1 className="text-2xl font-bold mb-2">Welcome to FluencyAI</h1>
-        <p className="text-muted-foreground mb-8 text-sm">Sign in to practice your English with AI.</p>
+        <h1 className="text-3xl font-medium tracking-tight mb-2 text-balance">Bem-vindo ao FluencyAI</h1>
+        <p className="text-foreground/75 mb-8 text-sm text-balance">Entre para praticar inglês com a Ana, sua professora de IA.</p>
         
         <button
           onClick={handleLogin}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white text-black font-medium rounded-xl hover:bg-gray-100 transition-colors"
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-card text-foreground font-medium rounded-full hover:bg-surface-hover transition-colors"
         >
           {/* Ícone SVG do Google */}
           <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -32,7 +33,7 @@ export function Login() {
             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
           </svg>
-          Continue with Google
+          Continuar com o Google
         </button>
       </div>
     </div>

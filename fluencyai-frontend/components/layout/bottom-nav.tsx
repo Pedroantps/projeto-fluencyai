@@ -1,42 +1,39 @@
 "use client"
 
-import { Home, Calendar, BookOpen, MessageCircle, User } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { navItems } from "@/components/layout/sidebar"
+import { ThemeToggle } from "@/components/layout/theme-toggle"
 
-const navItems = [
-  { href: "/", icon: Home, label: "Inicio" },
-  { href: "/schedule", icon: Calendar, label: "Plano" },
-  { href: "/review", icon: BookOpen, label: "Revisao" },
-  { href: "/chat", icon: MessageCircle, label: "Chat" },
-  { href: "/profile", icon: User, label: "Perfil" },
-]
-
+/** Pílula flutuante no mobile. */
 export function BottomNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around h-16 border-t border-border/50 bg-sidebar/95 backdrop-blur-sm md:hidden">
+    <nav
+      aria-label="Principal"
+      className="fixed inset-x-3 bottom-3 z-50 flex items-center justify-between gap-1 rounded-full bg-sidebar p-1.5 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.25)] md:hidden"
+    >
       {navItems.map(({ href, icon: Icon, label }) => {
-        const isActive = pathname === href
+        const active = pathname === href
         return (
           <Link
             key={href}
             href={href}
+            aria-label={label}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex flex-col items-center justify-center gap-1 flex-1 text-[10px] sm:text-xs transition-colors",
-              isActive ? "text-primary" : "text-muted-foreground"
+              "flex h-12 flex-1 items-center justify-center gap-2 rounded-full text-xs font-medium transition-colors",
+              active ? "bg-primary text-primary-foreground px-4 flex-[1.6]" : "text-foreground"
             )}
           >
-            {isActive && (
-              <span className="absolute top-0 inset-x-0 mx-auto w-8 h-0.5 bg-primary rounded-full" />
-            )}
-            <Icon className="h-5 w-5" />
-            <span>{label}</span>
+            <Icon className="h-5 w-5 shrink-0" />
+            {active && <span>{label}</span>}
           </Link>
         )
       })}
+      <ThemeToggle className="h-12 w-12 shrink-0 bg-transparent" />
     </nav>
   )
 }

@@ -8,10 +8,11 @@ datasource db {
 
 // 1. Entidade do Aluno
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  level     String   @default("B1")
+  id          String   @id @default(uuid())
+  firebaseUid String?  @unique
+  name        String
+  email       String   @unique
+  level       Level    @default(B1)
   studyTime  Int      @default(30)
   createdAt DateTime @default(now())
 
@@ -35,6 +36,8 @@ model Message {
 
   // Relação 1 para 1 com a Correção (uma mensagem da IA pode ter uma correção)
   correction Correction?
+
+  @@index([userId, createdAt])
 }
 
 enum Role {
@@ -61,7 +64,7 @@ model Flashcard {
   back           String   // Tradução e explicação
   
   // NOVA COLUNA: Para saber de onde veio (chat, cronograma, aleatorio)
-  source         String   @default("chat")
+  source         CardSource @default(chat)
   
   // Campos para o algoritmo de repetição espaçada (como o Anki)
   nextReviewDate DateTime @default(now())
@@ -72,12 +75,14 @@ model Flashcard {
 
   userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, nextReviewDate])
 }
 
 // 5. Cronograma de Estudos (Kanban)
 model KanbanTask {
   id          String   @id @default(uuid())
-  type        String   // "video", "flashcard" ou "chat"
+  type        TaskType
   title       String
   description String?  @db.Text
   link        String?  // Link do YouTube
@@ -89,6 +94,8 @@ model KanbanTask {
 
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
 }
 
 // Tabela temporária para guardar palavras do Chat
@@ -101,4 +108,27 @@ model WordBank {
 
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, used])
+}
+
+enum Level {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum TaskType {
+  video
+  flashcard
+  chat
+}
+
+enum CardSource {
+  chat
+  cronograma
+  aleatorio
 }

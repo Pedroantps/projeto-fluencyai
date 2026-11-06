@@ -63,6 +63,14 @@ Crie um ficheiro `.env` na pasta `fluencyai-backend` e adicione as suas variáve
 DATABASE_URL="postgresql://user:password@localhost:5432/fluencyai"
 GEMINI_API_KEY="sua_chave_gemini"
 GROQ_API_KEY="sua_chave_groq"
+TTS_PROVIDER="auto"    # auto = Azure se houver chave, senão Kokoro local
+AZURE_SPEECH_KEY="sua_chave_azure"
+AZURE_SPEECH_REGION="canadacentral"   # mesma região do recurso Speech no portal
+AZURE_SPEECH_VOICE="en-US-AvaMultilingualNeural"
+TTS_VOICE="af_heart"   # voz do Kokoro TTS (local, gratuito; baixa ~90 MB no 1º uso)
+CORS_ORIGINS="http://localhost:3000"
+# Mesmo project id do Firebase usado no front-end (valida o login em todas as rotas)
+FIREBASE_PROJECT_ID="seu_project_id"
 ```
 Corra as migrações da base de dados e inicie o servidor:
 ```bash
@@ -80,6 +88,7 @@ npm install
 ```
 Crie um ficheiro `.env.local` na pasta `fluencyai-frontend` com as suas chaves do Firebase:
 ```env
+NEXT_PUBLIC_API_URL="http://localhost:3333"
 NEXT_PUBLIC_FIREBASE_API_KEY="sua_chave"
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="seu_dominio"
 NEXT_PUBLIC_FIREBASE_PROJECT_ID="seu_project_id"

@@ -3,19 +3,14 @@
 import { useState, useRef, useEffect } from "react"
 import { Mic, Send, Volume2, ChevronDown, Sparkles, Loader2, BookmarkPlus, X, RefreshCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { auth } from "@/lib/firebase" // Precisamos disto para pegar o email
+import { useAuth } from "@/components/auth/auth-provider"
+import { toast } from "sonner"
+import { speak } from "@/lib/speech"
+import {
+  clearChatHistory, getChatHistory, saveWord, sendChat, transcribeAudio,
+  type ChatMessage as Message,
+} from "@/lib/api"
 
-// Tipagem das Mensagens
-interface Message {
-  id: string
-  content: string
-  role: "user" | "assistant"
-  correction?: {
-    original: string
-    corrected: string
-    explanation: string
-  }
-}
 
 // ==========================================
 // 1. COMPONENTE VISUAL DO BALÃO DE CHAT
@@ -24,42 +19,28 @@ function ChatBubble({ message, onSaveWord }: { message: Message, onSaveWord?: (c
   const [showCorrection, setShowCorrection] = useState(false)
   const isUser = message.role === "user"
 
-  // Função para ler o texto (Azure TTS)
+  // Lê o texto em voz alta (Azure/Kokoro no servidor; voz do navegador como fallback)
   const handleSpeak = async () => {
-    try {
-      const response = await fetch("http://localhost:3333/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: message.content }),
-      });
-
-      if (!response.ok) throw new Error("Falha ao obter áudio");
-
-      const blob = await response.blob();
-      const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
-      audio.play();
-    } catch (error) {
-      console.error("Erro ao reproduzir áudio:", error);
-    }
+    const engine = await speak(message.content)
+    if (!engine) toast.error("Não foi possível reproduzir o áudio.")
   }
 
   return (
     <div className={cn("flex flex-col gap-1.5", isUser ? "items-end" : "items-start")}>
       <div
         className={cn(
-          "max-w-[88%] sm:max-w-[80%] px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-sm leading-relaxed",
+          "max-w-[88%] sm:max-w-[80%] px-4 py-3 rounded-3xl text-sm leading-relaxed",
           isUser
-            ? "bg-primary text-primary-foreground rounded-br-md"
-            : "bg-card border border-primary/20 text-foreground rounded-bl-md"
+            ? "bg-primary text-primary-foreground rounded-br-lg"
+            : "bg-cat-chat text-foreground rounded-bl-lg"
         )}
       >
         {!isUser && (
-          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
-            <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-              <Sparkles className="w-3 h-3 text-primary" />
+          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-foreground/10">
+            <div className="w-5 h-5 rounded-full bg-card flex items-center justify-center shrink-0">
+              <Sparkles className="w-3 h-3 text-foreground" />
             </div>
-            <span className="text-xs text-primary font-medium">Ana (AI Teacher)</span>
+            <span className="text-xs text-foreground font-medium">Ana (AI Teacher)</span>
           </div>
         )}
         
@@ -67,15 +48,15 @@ function ChatBubble({ message, onSaveWord }: { message: Message, onSaveWord?: (c
         
         {/* BOTÕES DE AÇÃO DA IA (Listen & Save Word) */}
         {!isUser && (
-          <div className="mt-3 flex items-center gap-4 border-t border-border/30 pt-2">
-            <button onClick={handleSpeak} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors">
+          <div className="mt-3 flex items-center gap-4 border-t border-foreground/10 pt-2">
+            <button onClick={handleSpeak} className="flex items-center gap-1.5 text-xs text-foreground/70 hover:text-foreground transition-colors">
               <Volume2 className="w-3.5 h-3.5" />
               Listen
             </button>
             
             <button 
               onClick={() => onSaveWord?.(message.content)} 
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+              className="flex items-center gap-1.5 text-xs text-foreground/70 hover:text-foreground transition-colors"
             >
               <BookmarkPlus className="w-3.5 h-3.5" />
               Save Word
@@ -87,7 +68,7 @@ function ChatBubble({ message, onSaveWord }: { message: Message, onSaveWord?: (c
       {message.correction && (
         <button
           onClick={() => setShowCorrection(!showCorrection)}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-success/10 text-success text-xs font-medium hover:bg-success/20 transition-colors"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-success/10 text-success text-xs font-medium hover:bg-success/20 transition-colors"
         >
           <span>{"Teacher's Note"}</span>
           <ChevronDown className={cn("w-3 h-3 transition-transform", showCorrection && "rotate-180")} />
@@ -95,7 +76,7 @@ function ChatBubble({ message, onSaveWord }: { message: Message, onSaveWord?: (c
       )}
 
       {message.correction && showCorrection && (
-        <div className="max-w-[88%] sm:max-w-[80%] p-3 rounded-lg bg-success/5 border border-success/20 text-sm">
+        <div className="max-w-[88%] sm:max-w-[80%] p-3 rounded-2xl bg-success/5 border border-success/20 text-sm">
           <div className="flex flex-col gap-1.5">
             <span className="line-through text-xs text-destructive">{message.correction.original}</span>
             <span className="text-xs font-medium text-success">{message.correction.corrected}</span>
@@ -145,7 +126,7 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
       setIsRecording(true);
     } catch (error) {
       console.error("Erro ao acessar microfone:", error);
-      alert("Não foi possível acessar o microfone.");
+      toast.error("Não foi possível acessar o microfone.");
     }
   };
 
@@ -160,15 +141,8 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
     setIsTranscribing(true);
     setMessage("Transcribing your voice...");
     try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
-      const response = await fetch("http://localhost:3333/api/transcribe", {
-        method: "POST",
-        body: formData,
-      });
-      if (!response.ok) throw new Error("Falha na transcrição");
-      const data = await response.json();
-      setMessage(data.text); 
+      const data = await transcribeAudio(audioBlob);
+      setMessage(data.text);
     } catch (error) {
       console.error("Erro no Whisper:", error);
       setMessage("Could not transcribe audio. Please type.");
@@ -178,8 +152,8 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3 bg-card border-t border-border/50">
-      <div className="flex-1 min-w-0 flex items-center px-3 py-2 rounded-xl bg-surface border border-border/50 focus-within:border-primary/50 transition-colors">
+    <form onSubmit={handleSubmit} className="flex items-center gap-2 px-3 py-3 sm:px-5 bg-background">
+      <div className="flex-1 min-w-0 flex items-center px-4 py-3 rounded-full bg-card focus-within:ring-2 focus-within:ring-ring transition-colors">
         <input
           type="text"
           value={message}
@@ -196,8 +170,8 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
         onPointerLeave={handlePointerUp}
         disabled={isLoading || isTranscribing}
         className={cn(
-          "relative flex items-center justify-center w-10 h-10 rounded-full shrink-0 transition-all select-none touch-none",
-          isRecording ? "bg-primary text-primary-foreground scale-110" : "bg-surface border border-border/50 text-muted-foreground hover:text-foreground"
+          "relative flex items-center justify-center w-11 h-11 rounded-full shrink-0 transition-all select-none touch-none",
+          isRecording ? "bg-primary text-primary-foreground scale-110" : "bg-card text-foreground hover:bg-surface-hover"
         )}
       >
         {isTranscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
@@ -206,7 +180,7 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
       <button
         type="submit"
         disabled={!message.trim() || isLoading || isTranscribing}
-        className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground shrink-0 disabled:opacity-40 hover:bg-primary/90 transition-colors"
+        className="flex items-center justify-center w-11 h-11 rounded-full bg-primary text-primary-foreground shrink-0 disabled:opacity-40 hover:bg-primary/90 transition-colors"
       >
         {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
       </button>
@@ -221,7 +195,7 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
 // 3. COMPONENTE PRINCIPAL (INTERFACE)
 // ==========================================
 export function ChatInterface() {
-  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
@@ -234,11 +208,10 @@ export function ChatInterface() {
   const [isSavingWord, setIsSavingWord] = useState(false)
 
   // Busca o histórico assim que o email estiver disponível
-  const loadHistory = async (email: string) => {
+  const loadHistory = async () => {
     try {
-      const res = await fetch(`http://localhost:3333/api/chat/history?email=${email}`)
-      if (res.ok) {
-        const data = await res.json()
+      {
+        const data = await getChatHistory()
         if (data.length > 0) {
           setMessages(data) // Carrega as 24h
         } else {
@@ -256,14 +229,8 @@ export function ChatInterface() {
   }
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user?.email) {
-        setUserEmail(user.email);
-        loadHistory(user.email);
-      }
-    });
-    return () => unsubscribe();
-  }, [])
+    if (user) loadHistory();
+  }, [user])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -271,22 +238,14 @@ export function ChatInterface() {
 
   // Lógica de Envio de Mensagem (Agora envia o Email junto)
   const handleSend = async (content: string) => {
-    if (!userEmail) return;
+    if (!user) return;
 
     const newUserMessage: Message = { id: Date.now().toString(), role: "user", content }
     setMessages((prev) => [...prev, newUserMessage])
     setIsLoading(true)
 
     try {
-      const response = await fetch("http://localhost:3333/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail, message: content }), // MUDANÇA: enviando email!
-      })
-
-      if (!response.ok) throw new Error("Falha ao comunicar com o servidor.")
-
-      const data = await response.json() 
+      const data = await sendChat(content)
       
       const newAiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -310,7 +269,7 @@ export function ChatInterface() {
 
   // Lógica do NOVO CHAT (Limpa tudo)
   const handleNewChat = async () => {
-    if (!userEmail || isLoading) return;
+    if (!user || isLoading) return;
     
     // Limpa o ecrã instantaneamente
     setMessages([{
@@ -321,27 +280,22 @@ export function ChatInterface() {
 
     try {
       // Pede à base de dados para apagar o histórico
-      await fetch(`http://localhost:3333/api/chat/history?email=${userEmail}`, {
-        method: "DELETE"
-      });
+      await clearChatHistory();
     } catch (error) {
       console.error("Erro ao limpar chat", error);
     }
   }
 
   const handleSaveWord = async () => {
-    if (!wordToSave.trim() || !userEmail) return;
+    if (!wordToSave.trim() || !user) return;
     setIsSavingWord(true);
     try {
-      const res = await fetch("http://localhost:3333/api/words/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail, word: wordToSave.trim(), context: wordContext })
-      });
-      if (res.ok) {
-        setWordToSave("");
-        setWordModalOpen(false);
-      }
+      await saveWord(wordToSave.trim(), wordContext);
+      setWordToSave("");
+      setWordModalOpen(false);
+    } catch (error) {
+      console.error("Erro ao guardar palavra", error);
+      toast.error("Não foi possível guardar a palavra.");
     } finally {
       setIsSavingWord(false);
     }
@@ -350,19 +304,19 @@ export function ChatInterface() {
   return (
     <div className="flex flex-col h-full relative">
       {/* CABEÇALHO COM BOTÃO DE NOVO CHAT */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50 shrink-0">
-        <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-          <Sparkles className="w-4 h-4 text-primary" />
+      <div className="flex items-center gap-3 px-4 sm:px-6 pt-5 pb-3 shrink-0">
+        <div className="w-11 h-11 rounded-full bg-cat-chat flex items-center justify-center shrink-0">
+          <Sparkles className="w-5 h-5 text-foreground" />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-medium text-foreground truncate">AI Conversation Practice</h2>
-          <p className="text-xs text-muted-foreground truncate">Powered by Groq Whisper & Llama-3</p>
+          <h2 className="text-lg font-medium tracking-tight text-foreground truncate">Pratique com a Ana</h2>
+          <p className="text-xs text-muted-foreground truncate">Fale ou escreva em inglês. Ela corrige você.</p>
         </div>
         
         {/* NOVO BOTÃO AQUI */}
         <button 
           onClick={handleNewChat}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border/50 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors text-xs font-medium"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card text-foreground hover:bg-surface-hover transition-colors text-xs font-medium"
         >
           <RefreshCcw className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Novo Chat</span>
@@ -390,9 +344,9 @@ export function ChatInterface() {
       {/* MODAL DE GUARDAR PALAVRA (Manteve-se inalterado) */}
       {wordModalOpen && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card border border-border/50 rounded-2xl p-6 w-full max-w-md shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
+          <div className="bg-card rounded-3xl p-6 w-full max-w-md shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-primary">
+              <div className="flex items-center gap-2 text-foreground">
                 <BookmarkPlus className="w-5 h-5" />
                 <h3 className="font-bold">Guardar no Word Bank</h3>
               </div>
@@ -402,15 +356,15 @@ export function ChatInterface() {
             </div>
             <div className="flex flex-col gap-4 mb-6">
               <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Palavra ou Expressão</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Palavra ou Expressão</label>
                 <input
                   type="text" autoFocus placeholder="Ex: Overwhelmed"
                   value={wordToSave} onChange={(e) => setWordToSave(e.target.value)}
-                  className="w-full bg-surface border border-border/50 rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary/50"
+                  className="w-full bg-surface rounded-2xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Contexto Capturado</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Contexto Capturado</label>
                 <div className="p-3 bg-surface/50 rounded-xl text-xs text-muted-foreground italic border border-border/30 max-h-24 overflow-y-auto">
                   "{wordContext}"
                 </div>
@@ -418,7 +372,7 @@ export function ChatInterface() {
             </div>
             <button
               onClick={handleSaveWord} disabled={!wordToSave.trim() || isSavingWord}
-              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isSavingWord ? <Loader2 className="w-5 h-5 animate-spin" /> : "Guardar Palavra"}
             </button>
