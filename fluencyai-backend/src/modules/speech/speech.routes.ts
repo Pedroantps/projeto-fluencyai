@@ -4,7 +4,7 @@ import { validate } from '../../middlewares/validate';
 import { aiLimiter } from '../../middlewares/rate-limit';
 import { audioUpload } from '../../middlewares/upload';
 import { transcribe } from '../../lib/ai/groq';
-import { synthesize } from '../../lib/ai/kokoro-tts';
+import { synthesize } from '../../lib/ai/tts';
 import { badRequest } from '../../lib/errors';
 
 const ttsBody = z.object({ text: z.string().trim().min(1).max(1000) });
@@ -17,9 +17,9 @@ speechRouter.post('/transcribe', aiLimiter(10), audioUpload.single('audio'), asy
   res.json({ text: await transcribe(req.file.buffer) });
 });
 
-// Texto -> fala (Kokoro TTS local)
+// Texto -> fala (Azure AI Speech, com Kokoro local como alternativa)
 speechRouter.post('/tts', aiLimiter(30), validate({ body: ttsBody }), async (req, res) => {
-  const audio = await synthesize(req.validated.body.text);
-  res.setHeader('Content-Type', 'audio/wav');
+  const { audio, contentType } = await synthesize(req.validated.body.text);
+  res.setHeader('Content-Type', contentType);
   res.send(audio);
 });

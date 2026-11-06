@@ -63,6 +63,10 @@ Crie um ficheiro `.env` na pasta `fluencyai-backend` e adicione as suas variáve
 DATABASE_URL="postgresql://user:password@localhost:5432/fluencyai"
 GEMINI_API_KEY="sua_chave_gemini"
 GROQ_API_KEY="sua_chave_groq"
+TTS_PROVIDER="auto"    # auto = Azure se houver chave, senão Kokoro local
+AZURE_SPEECH_KEY="sua_chave_azure"
+AZURE_SPEECH_REGION="canadacentral"   # mesma região do recurso Speech no portal
+AZURE_SPEECH_VOICE="en-US-AvaMultilingualNeural"
 TTS_VOICE="af_heart"   # voz do Kokoro TTS (local, gratuito; baixa ~90 MB no 1º uso)
 CORS_ORIGINS="http://localhost:3000"
 # Mesmo project id do Firebase usado no front-end (valida o login em todas as rotas)

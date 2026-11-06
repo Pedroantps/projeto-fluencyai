@@ -19,7 +19,7 @@ function ChatBubble({ message, onSaveWord }: { message: Message, onSaveWord?: (c
   const [showCorrection, setShowCorrection] = useState(false)
   const isUser = message.role === "user"
 
-  // Lê o texto em voz alta (Kokoro no servidor; voz do navegador como fallback)
+  // Lê o texto em voz alta (Azure/Kokoro no servidor; voz do navegador como fallback)
   const handleSpeak = async () => {
     const engine = await speak(message.content)
     if (!engine) toast.error("Não foi possível reproduzir o áudio.")
