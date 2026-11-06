@@ -9,7 +9,7 @@ const chatBody = z.object({ message: z.string().trim().min(1).max(2000) });
 export const chatRouter = Router();
 
 chatRouter.post('/chat', aiLimiter(30), validate({ body: chatBody }), async (req, res) => {
-  res.json(await sendMessage(req.user.id, req.validated.body.message));
+  res.json(await sendMessage(req.user, req.validated.body.message));
 });
 
 chatRouter.get('/chat/history', async (req, res) => {

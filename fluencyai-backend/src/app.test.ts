@@ -3,19 +3,20 @@ import request from 'supertest';
 
 const mocks = vi.hoisted(() => ({
   verifyIdToken: vi.fn(),
+  completeJson: vi.fn(),
   prisma: {
     user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     kanbanTask: { findFirst: vi.fn(), updateMany: vi.fn(), findFirstOrThrow: vi.fn(), findMany: vi.fn() },
     flashcard: { findFirst: vi.fn(), update: vi.fn(), count: vi.fn() },
     studyActivity: { upsert: vi.fn(), findMany: vi.fn() },
-    message: { create: vi.fn() },
+    message: { create: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn() },
   },
 }));
 
 vi.mock('./lib/firebase-admin', () => ({ firebaseAuth: { verifyIdToken: mocks.verifyIdToken } }));
 vi.mock('./lib/prisma', () => ({ prisma: mocks.prisma, pool: {} }));
 vi.mock('./lib/ai/gemini', () => ({ generateJson: vi.fn(), sanitizeForPrompt: (s: string) => s }));
-vi.mock('./lib/ai/groq', () => ({ groq: {}, transcribe: vi.fn() }));
+vi.mock('./lib/ai/groq', () => ({ groq: {}, transcribe: vi.fn(), completeJson: mocks.completeJson }));
 vi.mock('./lib/ai/tts', () => ({ synthesize: vi.fn(), warmupTts: vi.fn() }));
 
 import { app } from './app';
@@ -174,5 +175,19 @@ describe('progresso real', () => {
     const res = await request(app).patch(`/api/schedule/task/${UUID}`).set(auth).send({ completed: true });
     expect(res.status).toBe(200);
     expect(mocks.prisma.studyActivity.upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe('chat adaptado ao nível', () => {
+  it('chat usa o nível do aluno no prompt e salva a correção com userId e categoria', async () => {
+    mocks.prisma.message.findMany.mockResolvedValue([]);
+    mocks.completeJson.mockResolvedValue({ reply: 'Nice!', correction: { original: 'I goed', corrected: 'I went', explanation: 'Past of go.', category: 'verb_tense' } });
+    mocks.prisma.message.create.mockResolvedValueOnce({}).mockResolvedValueOnce({ content: 'Nice!', correction: { category: 'verb_tense' } });
+    const res = await request(app).post('/api/chat').set(auth).send({ message: 'I goed home' });
+    expect(res.status).toBe(200);
+    expect(mocks.completeJson.mock.calls[0][0][0].content).toContain('CEFR level B1');
+    expect(mocks.prisma.message.create).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ correction: { create: expect.objectContaining({ userId: 'u1', category: 'verb_tense' }) } }),
+    }));
   });
 });
