@@ -11,6 +11,7 @@ import { chatRouter } from './modules/chat/chat.routes';
 import { flashcardsRouter } from './modules/flashcards/flashcards.routes';
 import { wordsRouter } from './modules/words/words.routes';
 import { speechRouter } from './modules/speech/speech.routes';
+import { errorsRouter } from './modules/errors/errors.routes';
 
 export const app = express();
 
@@ -28,7 +29,7 @@ app.get('/health', (_req, res) => {
 });
 
 // Todas as rotas da API exigem um ID token válido do Firebase
-app.use('/api', requireAuth, userRouter, scheduleRouter, chatRouter, flashcardsRouter, wordsRouter, speechRouter);
+app.use('/api', requireAuth, userRouter, scheduleRouter, chatRouter, flashcardsRouter, wordsRouter, speechRouter, errorsRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Rota não encontrada.' });

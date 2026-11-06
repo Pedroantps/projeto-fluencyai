@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => ({
   prisma: {
     user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     kanbanTask: { findFirst: vi.fn(), updateMany: vi.fn(), findFirstOrThrow: vi.fn(), findMany: vi.fn() },
-    flashcard: { findFirst: vi.fn(), update: vi.fn(), count: vi.fn() },
+    flashcard: { findFirst: vi.fn(), update: vi.fn(), count: vi.fn(), createMany: vi.fn() },
+    correction: { findMany: vi.fn(), updateMany: vi.fn() },
+    $transaction: vi.fn().mockResolvedValue([]),
     studyActivity: { upsert: vi.fn(), findMany: vi.fn() },
     message: { create: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn() },
   },
@@ -189,5 +191,37 @@ describe('chat adaptado ao nível', () => {
     expect(mocks.prisma.message.create).toHaveBeenLastCalledWith(expect.objectContaining({
       data: expect.objectContaining({ correction: { create: expect.objectContaining({ userId: 'u1', category: 'verb_tense' }) } }),
     }));
+  });
+});
+
+describe('banco de erros', () => {
+  it('GET /errors lê só as correções do usuário e agrupa por categoria', async () => {
+    mocks.prisma.correction.findMany.mockResolvedValue([
+      { id: 'a', category: 'article', flashcardCreated: false, original: 'o', corrected: 'c', explanation: 'e', createdAt: new Date() },
+      { id: 'b', category: 'verb_tense', flashcardCreated: true, original: 'o', corrected: 'c', explanation: 'e', createdAt: new Date() },
+      { id: 'c', category: 'article', flashcardCreated: false, original: 'o', corrected: 'c', explanation: 'e', createdAt: new Date() },
+    ]);
+    const res = await request(app).get('/api/errors').set(auth);
+    expect(res.body).toMatchObject({ total: 3, pending: 2, groups: [{ category: 'article', count: 2 }, { category: 'verb_tense', count: 1 }] });
+    expect(typeof res.body.groups[0].items[0].createdAt).toBe('string');
+    expect(mocks.prisma.correction.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'u1' } }));
+  });
+  it('POST /errors/flashcards só usa correções do usuário ainda sem card', async () => {
+    mocks.prisma.correction.findMany.mockResolvedValue([]);
+    const res = await request(app).post('/api/errors/flashcards').set(auth).send({ ids: [UUID] });
+    expect(res.body).toEqual({ count: 0 });
+    expect(mocks.prisma.correction.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { userId: 'u1', flashcardCreated: false, id: { in: [UUID] } },
+    }));
+  });
+  it('ids inválidos retornam 400', async () => {
+    const res = await request(app).post('/api/errors/flashcards').set(auth).send({ ids: ['abc'] });
+    expect(res.status).toBe(400);
+  });
+  it('Novo Chat apaga mensagens mas não correções', async () => {
+    mocks.prisma.message.deleteMany.mockResolvedValue({ count: 3 });
+    await request(app).delete('/api/chat/history').set(auth);
+    expect(mocks.prisma.message.deleteMany).toHaveBeenCalledWith({ where: { userId: 'u1' } });
+    expect(mocks.prisma.correction.updateMany).not.toHaveBeenCalled();
   });
 });
