@@ -56,8 +56,9 @@ export function getDueCards() {
   return apiJson<Flashcard[]>("/api/flashcards/due", { cache: "no-store" })
 }
 
-export function reviewCard(id: string, quality: number) {
-  return apiJson<unknown>(`/api/flashcards/${encodeURIComponent(id)}/review`, jsonBody("PATCH", { quality }))
+export function reviewCard(id: string, quality: number, mode?: "normal" | "dictation") {
+  const body = mode ? { quality, mode } : { quality }
+  return apiJson<unknown>(`/api/flashcards/${encodeURIComponent(id)}/review`, jsonBody("PATCH", body))
 }
 
 export function transcribeAudio(audio: Blob, filename = "recording.webm") {
