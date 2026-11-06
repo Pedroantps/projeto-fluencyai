@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { BrainCircuit, Sparkles, RefreshCw, Loader2, XCircle, CheckCircle, Smile } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth/auth-provider"
+import { SOURCE_LABEL } from "@/lib/error-categories"
 import { generateDeck, getDueCards, reviewCard, type Flashcard } from "@/lib/api"
 
 export function FlashcardReview() {
@@ -120,7 +121,7 @@ export function FlashcardReview() {
           <div className="flex justify-between w-full text-xs font-medium text-muted-foreground px-4">
             <span>Cartão {currentIndex + 1} de {cards.length}</span>
             <span className="bg-cat-cards text-foreground px-3 py-1 rounded-full">
-              Origem: {currentCard.source}
+              Origem: {SOURCE_LABEL[currentCard.source] ?? currentCard.source}
             </span>
           </div>
 

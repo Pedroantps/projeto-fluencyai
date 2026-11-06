@@ -44,10 +44,37 @@ export interface TaskUpdate {
   order?: number
 }
 
+export type ErrorCategory =
+  | "verb_tense" | "preposition" | "article" | "word_order"
+  | "word_choice" | "portuguese_word" | "spelling" | "other"
+
 export interface Correction {
   original: string
   corrected: string
   explanation: string
+  category?: ErrorCategory
+}
+
+export interface ErrorItem {
+  id: string
+  original: string
+  corrected: string
+  explanation: string
+  category: ErrorCategory
+  createdAt: string
+  flashcardCreated: boolean
+}
+
+export interface ErrorGroup {
+  category: ErrorCategory
+  count: number
+  items: ErrorItem[]
+}
+
+export interface ErrorsResponse {
+  total: number
+  pending: number
+  groups: ErrorGroup[]
 }
 
 export interface ChatMessage {

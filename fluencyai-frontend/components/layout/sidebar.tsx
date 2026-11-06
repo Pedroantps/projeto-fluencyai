@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, CalendarDays, Layers, MessageCircle, User, NotebookPen } from "lucide-react"
+import { Home, CalendarDays, Layers, MessageCircle, User, NotebookPen, SpellCheck } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -10,6 +10,7 @@ export const navItems = [
   { href: "/", icon: Home, label: "Início" },
   { href: "/schedule", icon: CalendarDays, label: "Plano" },
   { href: "/review", icon: Layers, label: "Revisão" },
+  { href: "/errors", icon: SpellCheck, label: "Erros" },
   { href: "/chat", icon: MessageCircle, label: "Chat" },
   { href: "/profile", icon: User, label: "Perfil" },
 ]

@@ -1,6 +1,6 @@
 import { apiBlob, apiJson, jsonBody } from "./client"
 import type {
-  ChatMessage, ChatReply, DaySchedule, Flashcard, MeResponse,
+  ChatMessage, ChatReply, DaySchedule, ErrorsResponse, Flashcard, MeResponse,
   PreferencesInput, TaskUpdate, TranscribeResponse,
 } from "./types"
 
@@ -65,4 +65,12 @@ export function transcribeAudio(audio: Blob, filename = "recording.webm") {
 
 export function synthesizeSpeech(text: string) {
   return apiBlob("/api/tts", jsonBody("POST", { text }))
+}
+
+export function getErrors() {
+  return apiJson<ErrorsResponse>("/api/errors", { cache: "no-store" })
+}
+
+export function createErrorCards(ids?: string[]) {
+  return apiJson<{ count: number }>("/api/errors/flashcards", jsonBody("POST", ids ? { ids } : {}))
 }
