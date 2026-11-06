@@ -31,7 +31,7 @@ export async function completeJson<T>(
     const raw = (completion.choices[0]?.message?.content || '{}').replace(/```json/g, '').replace(/```/g, '').trim();
     return schema.parse(JSON.parse(raw));
   } catch (err) {
-    logger.error({ err }, 'Falha ao gerar resposta do chat');
+    logger.error({ err }, 'Falha ao gerar JSON via Groq');
     throw new AppError(502, 'Falha na comunicação com a IA.');
   }
 }
