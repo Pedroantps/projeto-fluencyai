@@ -21,7 +21,7 @@ function speakWithBrowser(text: string): boolean {
   return true
 }
 
-// Tenta a voz do servidor (Kokoro); se falhar, usa a voz do navegador.
+// Tenta a voz do servidor (Azure ou Kokoro); se falhar, usa a voz do navegador.
 // Retorna qual motor foi usado, ou null se nenhum funcionou.
 export async function speak(text: string): Promise<"server" | "browser" | null> {
   stopCurrent()

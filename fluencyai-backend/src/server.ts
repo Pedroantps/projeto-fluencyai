@@ -2,7 +2,7 @@ import { app } from './app';
 import { env } from './config/env';
 import { prisma, pool } from './lib/prisma';
 import { logger } from './lib/logger';
-import { warmupTts } from './lib/ai/kokoro-tts';
+import { warmupTts } from './lib/ai/tts';
 
 const server = app.listen(env.PORT, () => {
   logger.info(`Servidor rodando na porta ${env.PORT}`);
