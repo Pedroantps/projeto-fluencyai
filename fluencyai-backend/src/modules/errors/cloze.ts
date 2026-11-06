@@ -1,5 +1,12 @@
 const norm = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}']/gu, '');
 
+/** Correção sem nada a corrigir (vazia ou igual após normalizar) não gera card. */
+export function isIdenticalCorrection(original: string, corrected: string): boolean {
+  const o = original.split(/\s+/).map(norm).join('');
+  const c = corrected.split(/\s+/).map(norm).join('');
+  return !o || !c || o === c;
+}
+
 export function buildCloze(original: string, corrected: string, explanation: string): { front: string; back: string } {
   const o = original.trim().split(/\s+/).filter(Boolean);
   const c = corrected.trim().split(/\s+/).filter(Boolean);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCloze } from './cloze';
+import { buildCloze, isIdenticalCorrection } from './cloze';
 
 describe('buildCloze', () => {
   it('troca o trecho corrigido por ____', () =>
@@ -14,4 +14,10 @@ describe('buildCloze', () => {
     expect(buildCloze('Eu gosto de café', 'I like coffee', 'x').front).toBe('Corrija: "Eu gosto de café"'));
   it('trecho com mais de 4 palavras usa o fallback', () =>
     expect(buildCloze('Yesterday me and him goes to the the park', 'Yesterday he and I went to the park', 'x').front).toMatch(/^Corrija:/));
+});
+
+describe('isIdenticalCorrection', () => {
+  it('detecta diferença só de caixa/pontuação', () => expect(isIdenticalCorrection('i went home', 'I went home.')).toBe(true));
+  it('detecta lado vazio', () => expect(isIdenticalCorrection('  ', 'I went home')).toBe(true));
+  it('false quando há correção real', () => expect(isIdenticalCorrection('I goed home', 'I went home')).toBe(false));
 });

@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
     kanbanTask: { findFirst: vi.fn(), updateMany: vi.fn(), findFirstOrThrow: vi.fn(), findMany: vi.fn() },
     flashcard: { findFirst: vi.fn(), update: vi.fn(), count: vi.fn(), createMany: vi.fn() },
     correction: { findMany: vi.fn(), updateMany: vi.fn() },
-    $transaction: vi.fn().mockResolvedValue([]),
+    $transaction: vi.fn(async (arg: unknown) => (typeof arg === 'function' ? (arg as (t: unknown) => unknown)(mocks.prisma) : Promise.all(arg as unknown[]))),
     studyActivity: { upsert: vi.fn(), findMany: vi.fn() },
     message: { create: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn() },
   },
@@ -213,6 +213,34 @@ describe('banco de erros', () => {
     expect(mocks.prisma.correction.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { userId: 'u1', flashcardCreated: false, id: { in: [UUID] } },
     }));
+  });
+  it('POST /errors/flashcards reivindica as correções e cria os cards cloze', async () => {
+    const rows = [
+      { id: 'a', original: 'I goed home', corrected: 'I went home', explanation: 'Past of go.' },
+      { id: 'b', original: 'i went home', corrected: 'I went home.', explanation: 'Caixa.' },
+    ];
+    mocks.prisma.correction.findMany.mockResolvedValueOnce(rows);
+    mocks.prisma.correction.updateMany.mockResolvedValueOnce({ count: 2 });
+    const res = await request(app).post('/api/errors/flashcards').set(auth).send({});
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ count: 1 });
+    expect(mocks.prisma.correction.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['a', 'b'] }, userId: 'u1', flashcardCreated: false },
+      data: { flashcardCreated: true },
+    });
+    expect(mocks.prisma.flashcard.createMany).toHaveBeenCalledWith({
+      data: [{ front: 'I ____ home', back: 'I went home\n\nPast of go.', source: 'erro', userId: 'u1' }],
+    });
+  });
+  it('POST /errors/flashcards retorna 409 sem criar cards se outra requisição reivindicou antes', async () => {
+    mocks.prisma.correction.findMany.mockResolvedValueOnce([
+      { id: 'a', original: 'I goed home', corrected: 'I went home', explanation: 'x' },
+      { id: 'b', original: 'She go', corrected: 'She goes', explanation: 'y' },
+    ]);
+    mocks.prisma.correction.updateMany.mockResolvedValueOnce({ count: 1 });
+    const res = await request(app).post('/api/errors/flashcards').set(auth).send({});
+    expect(res.status).toBe(409);
+    expect(mocks.prisma.flashcard.createMany).not.toHaveBeenCalled();
   });
   it('ids inválidos retornam 400', async () => {
     const res = await request(app).post('/api/errors/flashcards').set(auth).send({ ids: ['abc'] });
