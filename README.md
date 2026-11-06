@@ -63,16 +63,10 @@ Crie um ficheiro `.env` na pasta `fluencyai-backend` e adicione as suas variáve
 DATABASE_URL="postgresql://user:password@localhost:5432/fluencyai"
 GEMINI_API_KEY="sua_chave_gemini"
 GROQ_API_KEY="sua_chave_groq"
-AZURE_SPEECH_KEY="sua_chave_azure"
-AZURE_SPEECH_REGION="sua_regiao_azure"
+TTS_VOICE="af_heart"   # voz do Kokoro TTS (local, gratuito; baixa ~90 MB no 1º uso)
 CORS_ORIGINS="http://localhost:3000"
-# Service account do Firebase (usada para validar o login em todas as rotas da API)
+# Mesmo project id do Firebase usado no front-end (valida o login em todas as rotas)
 FIREBASE_PROJECT_ID="seu_project_id"
-FIREBASE_CLIENT_EMAIL="..."
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----
-...
------END PRIVATE KEY-----
-"
 ```
 Corra as migrações da base de dados e inicie o servidor:
 ```bash

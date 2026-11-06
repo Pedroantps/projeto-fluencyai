@@ -17,9 +17,9 @@ import { CSS } from '@dnd-kit/utilities'
 
 
 const taskIcons: Record<TaskType, { icon: React.ElementType; color: string; bg: string }> = {
-  video: { icon: Play, color: "text-cyan-400", bg: "bg-cyan-400/10" },
-  flashcard: { icon: FlashcardIcon, color: "text-emerald-400", bg: "bg-emerald-400/10" },
-  chat: { icon: MessageCircle, color: "text-amber-400", bg: "bg-amber-400/10" },
+  video: { icon: Play, color: "text-foreground", bg: "bg-cat-video" },
+  flashcard: { icon: FlashcardIcon, color: "text-foreground", bg: "bg-cat-cards" },
+  chat: { icon: MessageCircle, color: "text-foreground", bg: "bg-cat-chat" },
 }
 
 function FlashcardIcon({ className }: { className?: string }) {
@@ -77,11 +77,11 @@ function SortableTaskCard({ task, onToggle }: { task: Task; onToggle: (id: strin
       {...listeners} 
       onClick={handleCardClick}
       className={cn(
-        "flex items-start gap-3 p-3 rounded-xl bg-card border transition-all cursor-grab active:cursor-grabbing hover:border-primary/50 relative",
-        task.completed ? "border-border/30 opacity-60 bg-surface/50" : "border-border/50 shadow-sm"
+        "flex items-start gap-3 p-3 rounded-2xl bg-card transition-all cursor-grab active:cursor-grabbing hover:bg-surface-hover relative",
+        task.completed && "opacity-60"
       )}
     >
-      <div className={cn("flex items-center justify-center w-8 h-8 rounded-lg shrink-0", bg)}>
+      <div className={cn("flex items-center justify-center w-9 h-9 rounded-full shrink-0", bg)}>
         <span className={color}><Icon className="w-4 h-4" /></span>
       </div>
       
@@ -104,7 +104,7 @@ function SortableTaskCard({ task, onToggle }: { task: Task; onToggle: (id: strin
           "flex items-center justify-center w-6 h-6 rounded-full border-2 shrink-0 transition-colors z-10",
           task.completed 
             ? "bg-primary border-primary text-primary-foreground" 
-            : "border-muted-foreground/30 hover:border-primary/50 bg-card"
+            : "border-muted-foreground/40 hover:border-foreground bg-card"
         )}
       >
         {task.completed && <Check className="w-3.5 h-3.5" />}
@@ -117,15 +117,15 @@ function SortableTaskCard({ task, onToggle }: { task: Task; onToggle: (id: strin
 function DayColumn({ day, isToday, onToggleTask }: { day: DaySchedule; isToday?: boolean; onToggleTask: (id: string) => void }) {
   return (
     <div className={cn(
-      "flex flex-col w-full p-4 rounded-2xl border transition-colors h-full",
-      isToday ? "bg-primary/5 border-primary/30" : "bg-surface/20 border-border/30"
+      "flex flex-col w-full p-4 rounded-[28px] transition-colors h-full",
+      isToday ? "bg-cat-video" : "bg-surface"
     )}>
       <div className="flex items-center gap-2 mb-4">
-        <h3 className={cn("text-sm font-semibold", isToday ? "text-primary" : "text-foreground")}>
+        <h3 className={cn("text-base font-medium", "text-foreground")}>
           {day.dayName}
         </h3>
         {isToday && (
-          <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-primary text-primary-foreground uppercase tracking-wide shadow-sm shadow-primary/20">
+          <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-primary text-primary-foreground">
             Hoje
           </span>
         )}
@@ -138,7 +138,7 @@ function DayColumn({ day, isToday, onToggleTask }: { day: DaySchedule; isToday?:
             <SortableTaskCard key={task.id} task={task} onToggle={onToggleTask} />
           ))}
           {day.tasks.length === 0 && (
-            <div className="h-full min-h-20 border-2 border-dashed border-border/50 rounded-xl flex items-center justify-center text-xs text-muted-foreground opacity-50">
+            <div className="h-full min-h-20 border-2 border-dashed border-border rounded-2xl flex items-center justify-center text-xs text-muted-foreground opacity-50">
               Sem tarefas
             </div>
           )}
@@ -311,12 +311,12 @@ export function ScheduleKanban() {
 
   return (
     // Container mestre provendo espaçamento adicional em mobile para evitar sobreposições
-    <div className="flex flex-col gap-6 pb-28 w-full max-w-full overflow-hidden">
+    <div className="flex flex-col gap-6 w-full max-w-full overflow-hidden">
       
       {/* Cabeçalho superior englobando resumo quantitativo e os controles gerais */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Cronograma de IA</h1>
+          <h1 className="text-3xl sm:text-4xl font-medium tracking-tight text-foreground">Seu plano da semana</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {completedTasks} de {totalTasks} tarefas concluídas
           </p>
@@ -324,10 +324,10 @@ export function ScheduleKanban() {
         <button
           onClick={handleResetSchedule}
           disabled={isGenerating}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-70 shadow-sm shrink-0 w-full sm:w-auto"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-70 shrink-0 w-full sm:w-auto"
         >
           {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          {isGenerating ? "A Gerar Semana..." : "Novo Cronograma"}
+          {isGenerating ? "Gerando semana..." : "Gerar novo plano"}
         </button>
       </div>
 
@@ -339,7 +339,7 @@ export function ScheduleKanban() {
         </div>
         <div className="h-2 rounded-full bg-surface overflow-hidden">
           <div 
-            className="h-full rounded-full bg-linear-to-r from-primary to-primary/70 transition-all duration-500"
+            className="h-full rounded-full bg-primary transition-all duration-500"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -360,7 +360,7 @@ export function ScheduleKanban() {
 
         <DragOverlay>
           {activeTask ? (
-            <div className="opacity-95 shadow-2xl scale-[1.02] rotate-2 cursor-grabbing rounded-xl">
+            <div className="opacity-95 shadow-2xl scale-[1.02] rotate-2 cursor-grabbing rounded-2xl">
               <SortableTaskCard task={activeTask} onToggle={() => {}} />
             </div>
           ) : null}

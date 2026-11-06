@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { ZodType } from 'zod';
 import { env } from '../../config/env';
 import { AppError } from '../errors';
+import { logger } from '../logger';
 
 const client = new GoogleGenerativeAI(env.GEMINI_API_KEY);
 
@@ -14,7 +15,8 @@ export async function generateJson<T>(prompt: string, schema: ZodType<T>): Promi
   try {
     const result = await model.generateContent(prompt);
     return schema.parse(JSON.parse(result.response.text()));
-  } catch {
+  } catch (err) {
+    logger.error({ err }, 'Falha ao gerar JSON com o Gemini');
     throw new AppError(502, 'Falha ao gerar conteúdo com a IA. Tente novamente.');
   }
 }

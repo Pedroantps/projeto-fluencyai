@@ -1,15 +1,11 @@
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { env } from '../config/env';
 
+// Verificar ID tokens só exige o projectId (usa as chaves públicas do Google);
+// não precisamos guardar nenhuma chave privada de service account.
 if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: env.FIREBASE_PROJECT_ID,
-      clientEmail: env.FIREBASE_CLIENT_EMAIL,
-      privateKey: env.FIREBASE_PRIVATE_KEY,
-    }),
-  });
+  initializeApp({ projectId: env.FIREBASE_PROJECT_ID });
 }
 
 export const firebaseAuth = getAuth();

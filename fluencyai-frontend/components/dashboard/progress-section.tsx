@@ -1,24 +1,78 @@
 "use client"
 
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts"
+import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip } from "recharts"
 
 export interface ProgressData {
-  weeklyChart: { day: string, minutes: number }[];
-  skillsData: { label: string, percentage: number, color: string }[];
+  weeklyChart: { day: string; video: number; flashcard: number; chat: number }[];
+  skillsData: { label: string; percentage: number; color: string }[];
 }
 
-function ProgressBar({ label, percentage, color }: { label: string, percentage: number, color: string }) {
+const series = [
+  { key: "video", label: "Vídeo", color: "var(--chart-1)" },
+  { key: "flashcard", label: "Cartões", color: "var(--chart-2)" },
+  { key: "chat", label: "Conversa", color: "var(--chart-3)" },
+] as const
+
+/** Barras empilhadas por tipo de atividade (minutos concluídos). */
+export function ActivityChart({ data }: { data: ProgressData["weeklyChart"] }) {
+  const total = data.reduce((acc, d) => acc + d.video + d.flashcard + d.chat, 0)
+  return (
+    <div className="flex flex-col gap-3 rounded-[28px] bg-card p-5">
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm text-muted-foreground">Atividade da semana</span>
+        <span className="tabular text-sm font-medium text-foreground">{total} min</span>
+      </div>
+      <div className="h-40 w-full" role="img" aria-label={`Minutos estudados por dia, total ${total}`}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }} barCategoryGap="18%">
+            <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} dy={6} />
+            <Tooltip
+              cursor={{ fill: "var(--surface)", radius: 12 }}
+              contentStyle={{
+                borderRadius: 16,
+                border: "none",
+                background: "var(--popover)",
+                color: "var(--popover-foreground)",
+                fontSize: 12,
+              }}
+              itemStyle={{ color: "var(--popover-foreground)" }}
+              labelStyle={{ color: "var(--muted-foreground)" }}
+              formatter={(v: number, name: string) => [`${v} min`, series.find((s) => s.key === name)?.label ?? name]}
+            />
+            {series.map((s, i) => (
+              <Bar
+                key={s.key}
+                dataKey={s.key}
+                stackId="a"
+                fill={s.color}
+                radius={i === series.length - 1 ? [8, 8, 0, 0] : 0}
+                maxBarSize={30}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        {series.map((s) => (
+          <li key={s.key} className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
+            {s.label}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function ProgressBar({ label, percentage, color }: { label: string; percentage: number; color: string }) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between text-sm font-medium">
-        <span className="text-foreground">{label}</span>
-        <span className="text-muted-foreground">{percentage}% concluído</span>
+      <div className="flex items-center justify-between text-sm">
+        <span className="font-medium text-foreground">{label}</span>
+        <span className="tabular text-muted-foreground">{percentage}%</span>
       </div>
-      <div className="h-2.5 rounded-full bg-surface overflow-hidden">
-        <div 
-          className="h-full rounded-full transition-all duration-1000 ease-out" 
-          style={{ width: `${percentage}%`, backgroundColor: color }}
-        />
+      <div className="h-3 overflow-hidden rounded-full bg-surface" role="progressbar" aria-valuenow={percentage} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
+        <div className="h-full rounded-full transition-[width] duration-700 ease-out" style={{ width: `${percentage}%`, backgroundColor: color }} />
       </div>
     </div>
   )
@@ -26,54 +80,13 @@ function ProgressBar({ label, percentage, color }: { label: string, percentage: 
 
 export function ProgressSection({ data }: { data: ProgressData }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-      
-      {/* Gráfico de Barras */}
-      <div className="flex flex-col gap-6 p-5 sm:p-6 rounded-2xl bg-card border border-border/50 shadow-sm">
-        <h3 className="text-base font-bold text-foreground">Minutos de Estudo na Semana</h3>
-        <div className="h-52 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data.weeklyChart} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
-              <XAxis 
-                dataKey="day" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fill: "#A1A1AA", fontSize: 12, fontWeight: 500 }}
-                dy={10}
-              />
-              <YAxis 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fill: "#A1A1AA", fontSize: 12 }}
-              />
-              <Tooltip 
-                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: '#18181B' }}
-              />
-              <Bar dataKey="minutes" radius={[6, 6, 0, 0]} maxBarSize={40}>
-                {data.weeklyChart.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={entry.minutes > 0 ? "var(--primary)" : "var(--surface)"} 
-                    className="transition-all duration-300 hover:opacity-80"
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+    <section className="flex flex-col gap-5 rounded-[28px] bg-card p-6" aria-labelledby="skills-title">
+      <h2 id="skills-title" className="text-lg font-medium text-foreground">Progresso por habilidade</h2>
+      <div className="grid gap-5 sm:grid-cols-3">
+        {data.skillsData.map((skill) => (
+          <ProgressBar key={skill.label} {...skill} />
+        ))}
       </div>
-
-      {/* Barras de Habilidades */}
-      <div className="flex flex-col gap-6 p-5 sm:p-6 rounded-2xl bg-card border border-border/50 shadow-sm">
-        <h3 className="text-base font-bold text-foreground">Progresso por Habilidade</h3>
-        <div className="flex flex-col gap-6 mt-2">
-          {data.skillsData.map((skill) => (
-            <ProgressBar key={skill.label} {...skill} />
-          ))}
-        </div>
-      </div>
-
-    </div>
+    </section>
   )
 }

@@ -7,11 +7,11 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
   GROQ_API_KEY: z.string().min(1),
-  AZURE_SPEECH_KEY: z.string().min(1),
-  AZURE_SPEECH_REGION: z.string().min(1),
+  // Modelo de chat do Groq (modelos antigos sao descontinuados com frequencia)
+  CHAT_MODEL: z.string().default('openai/gpt-oss-120b'),
+  // Voz do Kokoro TTS (ex.: af_heart, af_bella, am_michael)
+  TTS_VOICE: z.string().default('af_heart'),
   FIREBASE_PROJECT_ID: z.string().min(1),
-  FIREBASE_CLIENT_EMAIL: z.string().min(1),
-  FIREBASE_PRIVATE_KEY: z.string().min(1),
   // Lista separada por virgula das origens permitidas pelo CORS
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
 });
@@ -26,5 +26,4 @@ if (!parsed.success) {
 export const env = {
   ...parsed.data,
   CORS_ORIGINS: parsed.data.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean),
-  FIREBASE_PRIVATE_KEY: parsed.data.FIREBASE_PRIVATE_KEY.replace(/\n/g, '\n'),
 };

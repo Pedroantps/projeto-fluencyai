@@ -3,91 +3,117 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* FluencyAI Dark Theme - Premium EdTech Design */
+/*
+  FluencyAI — "caderno de estudo colorido"
+  Papel + azul de caneta esferográfica + pastéis por categoria.
+  Light = :root, Dark = .dark (pastéis rebaixados, não invertidos).
+*/
 :root {
-  --background: #0B0B0E;
-  --foreground: #FFFFFF;
-  --card: #16161C;
-  --card-foreground: #FFFFFF;
-  --popover: #16161C;
-  --popover-foreground: #FFFFFF;
-  --primary: #9D7AFF;
+  --background: #F7F6F2;
+  --foreground: #1B1718;
+  --card: #FFFFFF;
+  --card-foreground: #1B1718;
+  --popover: #FFFFFF;
+  --popover-foreground: #1B1718;
+  --primary: #1E44C4;
   --primary-foreground: #FFFFFF;
-  --secondary: #1E1E26;
-  --secondary-foreground: #FFFFFF;
-  --muted: #1E1E26;
-  --muted-foreground: #A1A1AA;
-  --accent: #9D7AFF;
-  --accent-foreground: #FFFFFF;
-  --destructive: #FF6B6B;
+  --secondary: #EEECE6;
+  --secondary-foreground: #1B1718;
+  --muted: #EEECE6;
+  --muted-foreground: #6B615C;
+  --accent: #EEECE6;
+  --accent-foreground: #1B1718;
+  --destructive: #C23B3B;
   --destructive-foreground: #FFFFFF;
-  --border: #2A2A35;
-  --input: #1E1E26;
-  --ring: #9D7AFF;
-  --chart-1: #9D7AFF;
-  --chart-2: #10B981;
-  --chart-3: #FF9F43;
-  --chart-4: #FF6B6B;
-  --chart-5: #60A5FA;
-  --radius: 0.625rem;
-  --sidebar: #0F0F13;
-  --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #9D7AFF;
+  --border: #E2DFD7;
+  --input: #E2DFD7;
+  --ring: #1E44C4;
+  --radius: 0.875rem;
+
+  --chart-1: #3D6BE0;
+  --chart-2: #4FB58A;
+  --chart-3: #E0A25A;
+  --chart-4: #E07C80;
+  --chart-5: #7FB2E5;
+
+  --sidebar: #EEECE6;
+  --sidebar-foreground: #1B1718;
+  --sidebar-primary: #1E44C4;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #1E1E26;
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #2A2A35;
-  --sidebar-ring: #9D7AFF;
-  
-  /* Custom FluencyAI tokens */
-  --streak: #FF9F43;
-  --success: #10B981;
-  --surface: #16161C;
-  --surface-hover: #1E1E26;
+  --sidebar-accent: #FFFFFF;
+  --sidebar-accent-foreground: #1B1718;
+  --sidebar-border: #E2DFD7;
+  --sidebar-ring: #1E44C4;
+
+  /* Categorias de atividade: vídeo, cartões, conversa, destaque */
+  --cat-video: #CFDDFB;
+  --cat-cards: #BDEBD5;
+  --cat-chat: #F8DDB8;
+  --cat-streak: #F4C5C5;
+
+  --streak: #D9582B;
+  --success: #1B7F55;
+  --surface: #EEECE6;
+  --surface-hover: #E4E1D9;
 }
 
 .dark {
-  --background: #0B0B0E;
-  --foreground: #FFFFFF;
-  --card: #16161C;
-  --card-foreground: #FFFFFF;
-  --popover: #16161C;
-  --popover-foreground: #FFFFFF;
-  --primary: #9D7AFF;
-  --primary-foreground: #FFFFFF;
-  --secondary: #1E1E26;
-  --secondary-foreground: #FFFFFF;
-  --muted: #1E1E26;
-  --muted-foreground: #A1A1AA;
-  --accent: #9D7AFF;
-  --accent-foreground: #FFFFFF;
-  --destructive: #FF6B6B;
-  --destructive-foreground: #FFFFFF;
-  --border: #2A2A35;
-  --input: #1E1E26;
-  --ring: #9D7AFF;
-  --chart-1: #9D7AFF;
-  --chart-2: #10B981;
-  --chart-3: #FF9F43;
-  --chart-4: #FF6B6B;
-  --chart-5: #60A5FA;
-  --sidebar: #0F0F13;
-  --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #9D7AFF;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #1E1E26;
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #2A2A35;
-  --sidebar-ring: #9D7AFF;
+  --background: #1B1A18;
+  --foreground: #F5EFE9;
+  --card: #252321;
+  --card-foreground: #F5EFE9;
+  --popover: #252321;
+  --popover-foreground: #F5EFE9;
+  --primary: #8EAEFF;
+  --primary-foreground: #0F1A3A;
+  --secondary: #2E2B28;
+  --secondary-foreground: #F5EFE9;
+  --muted: #2E2B28;
+  --muted-foreground: #B3ADA6;
+  --accent: #2E2B28;
+  --accent-foreground: #F5EFE9;
+  --destructive: #F0716F;
+  --destructive-foreground: #1B1A18;
+  --border: #3A3633;
+  --input: #3A3633;
+  --ring: #8EAEFF;
+
+  --chart-1: #7FA2FF;
+  --chart-2: #5ECB9C;
+  --chart-3: #EDB46A;
+  --chart-4: #EE8E92;
+  --chart-5: #8FBFEF;
+
+  --sidebar: #252321;
+  --sidebar-foreground: #F5EFE9;
+  --sidebar-primary: #8EAEFF;
+  --sidebar-primary-foreground: #0F1A3A;
+  --sidebar-accent: #34312D;
+  --sidebar-accent-foreground: #F5EFE9;
+  --sidebar-border: #3A3633;
+  --sidebar-ring: #8EAEFF;
+
+  --cat-video: #2C3F6B;
+  --cat-cards: #2B5342;
+  --cat-chat: #5A4528;
+  --cat-streak: #5A3436;
+
+  --streak: #FF9F66;
+  --success: #5ED3A0;
+  --surface: #2E2B28;
+  --surface-hover: #383430;
 }
 
 @theme inline {
-  --font-sans: 'Inter', 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   --color-streak: var(--streak);
   --color-success: var(--success);
   --color-surface: var(--surface);
   --color-surface-hover: var(--surface-hover);
+  --color-cat-video: var(--cat-video);
+  --color-cat-cards: var(--cat-cards);
+  --color-cat-chat: var(--cat-chat);
+  --color-cat-streak: var(--cat-streak);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -116,6 +142,8 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 10px);
+  --radius-3xl: calc(var(--radius) + 16px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -133,6 +161,31 @@
   body {
     @apply bg-background text-foreground;
   }
+  ::selection {
+    background: var(--cat-video);
+    color: var(--foreground);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Entrada orquestrada da home: cards sobem em sequência */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.rise-in {
+  animation: rise-in 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rise-in { animation: none; }
+  * { scroll-behavior: auto !important; }
 }
 
 /* Efeitos 3D para os Flashcards */
