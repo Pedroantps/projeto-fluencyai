@@ -99,3 +99,9 @@ export interface Flashcard {
 export interface TranscribeResponse {
   text: string
 }
+
+export interface WordLookup {
+  word: string
+  translation: string
+  meaning: string
+}

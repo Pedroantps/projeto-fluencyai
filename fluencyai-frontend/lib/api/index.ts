@@ -1,7 +1,7 @@
 import { apiBlob, apiJson, jsonBody } from "./client"
 import type {
   ChatMessage, ChatReply, DaySchedule, ErrorsResponse, Flashcard, MeResponse,
-  PreferencesInput, TaskUpdate, TranscribeResponse,
+  PreferencesInput, TaskUpdate, TranscribeResponse, WordLookup,
 } from "./types"
 
 export { ApiError } from "./client"
@@ -42,6 +42,10 @@ export function clearChatHistory() {
 
 export function saveWord(word: string, context?: string) {
   return apiJson<unknown>("/api/words/save", jsonBody("POST", { word, context }))
+}
+
+export function lookupWord(word: string, context?: string) {
+  return apiJson<WordLookup>("/api/words/lookup", jsonBody("POST", { word, context }))
 }
 
 export function generateDeck() {

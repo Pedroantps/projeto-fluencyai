@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth/auth-provider"
 import { toast } from "sonner"
 import { speak } from "@/lib/speech"
+import { TappableText } from "@/components/chat/tappable-text"
 import {
   clearChatHistory, getChatHistory, saveWord, sendChat, transcribeAudio,
   type ChatMessage as Message,
@@ -44,7 +45,7 @@ function ChatBubble({ message, onSaveWord }: { message: Message, onSaveWord?: (c
           </div>
         )}
         
-        <p className="whitespace-pre-wrap">{message.content}</p>
+        {isUser ? <p className="whitespace-pre-wrap">{message.content}</p> : <TappableText text={message.content} />}
         
         {/* BOTÕES DE AÇÃO DA IA (Listen & Save Word) */}
         {!isUser && (
@@ -310,7 +311,7 @@ export function ChatInterface() {
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-medium tracking-tight text-foreground truncate">Pratique com a Ana</h2>
-          <p className="text-xs text-muted-foreground truncate">Fale ou escreva em inglês. Ela corrige você.</p>
+          <p className="text-xs text-muted-foreground truncate">Fale ou escreva em inglês. Toque numa palavra da Ana para traduzir.</p>
         </div>
         
         {/* NOVO BOTÃO AQUI */}
