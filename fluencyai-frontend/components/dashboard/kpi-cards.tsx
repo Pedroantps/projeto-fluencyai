@@ -1,6 +1,6 @@
 "use client"
 
-import { Flame, BookOpen, MessageCircle, Brain } from "lucide-react"
+import { Flame, Layers, MessageCircle, Brain } from "lucide-react"
 
 export interface KPIData {
   streak: number;
@@ -9,66 +9,25 @@ export interface KPIData {
   conversationMins: number;
 }
 
-interface KPICardProps {
-  icon: React.ReactNode
-  label: string
-  value: string | number
-  subtext?: string
-  iconColor?: string
-}
-
-function KPICard({ icon, label, value, subtext, iconColor = "text-primary" }: KPICardProps) {
+function Stat({ icon, bg, value, label }: { icon: React.ReactNode; bg: string; value: number; label: string }) {
   return (
-    <div className="flex flex-col gap-2 rounded-xl bg-card p-4 border border-border/50 hover:border-primary/30 transition-colors shadow-sm">
-      <div className="flex items-center justify-between">
-        <span className="text-xs sm:text-sm text-muted-foreground truncate pr-2">{label}</span>
-        <div className={`${iconColor} shrink-0`}>{icon}</div>
-      </div>
-      <div className="flex flex-col gap-0.5 mt-1">
-        <span className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{value}</span>
-        {subtext && <span className="text-xs text-muted-foreground leading-tight">{subtext}</span>}
-      </div>
+    <div className="flex items-center gap-3 rounded-full bg-card py-2 pl-2 pr-5">
+      <span className={`flex h-10 w-10 items-center justify-center rounded-full text-foreground ${bg}`}>{icon}</span>
+      <span className="flex items-baseline gap-1.5">
+        <span className="tabular text-lg font-medium text-foreground">{value}</span>
+        <span className="text-sm text-muted-foreground">{label}</span>
+      </span>
     </div>
   )
 }
 
 export function KPICards({ data }: { data: KPIData }) {
-  const kpis = [
-    {
-      icon: <Flame className="h-4 w-4 sm:h-5 sm:w-5" />,
-      label: "Streak",
-      value: data.streak,
-      subtext: "dias seguidos",
-      iconColor: "text-orange-500",
-    },
-    {
-      icon: <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />,
-      label: "Revisões",
-      value: data.reviews,
-      subtext: data.reviews === 1 ? "flashcard hoje" : "flashcards hoje",
-      iconColor: data.reviews > 0 ? "text-primary" : "text-emerald-500",
-    },
-    {
-      icon: <Brain className="h-4 w-4 sm:h-5 sm:w-5" />,
-      label: "Vocabulário",
-      value: data.words,
-      subtext: "palavras guardadas",
-      iconColor: "text-emerald-500",
-    },
-    {
-      icon: <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />,
-      label: "Conversação",
-      value: data.conversationMins,
-      subtext: "minutos de prática",
-      iconColor: "text-amber-500",
-    },
-  ]
-
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-      {kpis.map((kpi) => (
-        <KPICard key={kpi.label} {...kpi} />
-      ))}
+    <div className="flex flex-wrap gap-2.5" aria-label="Resumo">
+      <Stat icon={<Flame className="h-5 w-5" />} bg="bg-cat-streak" value={data.streak} label={data.streak === 1 ? "dia seguido" : "dias seguidos"} />
+      <Stat icon={<Layers className="h-5 w-5" />} bg="bg-cat-video" value={data.reviews} label={data.reviews === 1 ? "revisão hoje" : "revisões hoje"} />
+      <Stat icon={<Brain className="h-5 w-5" />} bg="bg-cat-cards" value={data.words} label="palavras" />
+      <Stat icon={<MessageCircle className="h-5 w-5" />} bg="bg-cat-chat" value={data.conversationMins} label="min de conversa" />
     </div>
   )
 }

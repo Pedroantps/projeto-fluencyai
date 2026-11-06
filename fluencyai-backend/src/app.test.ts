@@ -15,7 +15,7 @@ vi.mock('./lib/firebase-admin', () => ({ firebaseAuth: { verifyIdToken: mocks.ve
 vi.mock('./lib/prisma', () => ({ prisma: mocks.prisma, pool: {} }));
 vi.mock('./lib/ai/gemini', () => ({ generateJson: vi.fn(), sanitizeForPrompt: (s: string) => s }));
 vi.mock('./lib/ai/groq', () => ({ groq: {}, transcribe: vi.fn() }));
-vi.mock('./lib/ai/azure-tts', () => ({ synthesize: vi.fn() }));
+vi.mock('./lib/ai/kokoro-tts', () => ({ synthesize: vi.fn() }));
 
 import { app } from './app';
 
