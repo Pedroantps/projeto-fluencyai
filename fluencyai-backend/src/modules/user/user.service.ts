@@ -1,26 +1,25 @@
 import type { Level } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { notFound } from '../../lib/errors';
+import { getActivityStats } from '../activity/activity.service';
 
 export async function getProfile(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw notFound('Usuário não encontrado.');
 
-  const [flashcardsCount, messagesCount] = await Promise.all([
+  const [flashcardsCount, { streak, totalMinutes, todayMinutes }] = await Promise.all([
     prisma.flashcard.count({ where: { userId } }),
-    prisma.message.count({ where: { userId } }),
+    getActivityStats(userId),
   ]);
-
-  // Estimativa de horas ativas: ~2 min por mensagem
-  const studyHours = (messagesCount * 2) / 60;
-  const streak = messagesCount > 0 ? 1 : 0;
 
   return {
     userId: user.id,
     stats: {
-      streak: streak.toString(),
+      streak: String(streak),
       words: flashcardsCount.toString(),
-      hours: studyHours.toFixed(1),
+      hours: (totalMinutes / 60).toFixed(1),
+      studyMinutes: totalMinutes,
+      todayMinutes,
       level: user.level,
       studyTime: user.studyTime,
     },

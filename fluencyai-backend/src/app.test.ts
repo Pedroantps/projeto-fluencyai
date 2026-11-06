@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({
   prisma: {
     user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     kanbanTask: { updateMany: vi.fn(), findFirstOrThrow: vi.fn(), findMany: vi.fn() },
-    flashcard: { findFirst: vi.fn(), update: vi.fn() },
+    flashcard: { findFirst: vi.fn(), update: vi.fn(), count: vi.fn() },
+    studyActivity: { upsert: vi.fn(), findMany: vi.fn() },
     message: { create: vi.fn() },
   },
 }));
@@ -18,6 +19,7 @@ vi.mock('./lib/ai/groq', () => ({ groq: {}, transcribe: vi.fn() }));
 vi.mock('./lib/ai/tts', () => ({ synthesize: vi.fn(), warmupTts: vi.fn() }));
 
 import { app } from './app';
+import { startOfTodayUtc, addDaysUtc } from './lib/dates';
 
 const dbUser = { id: 'u1', firebaseUid: 'fb1', email: 'a@a.com', name: 'A', level: 'B1', studyTime: 30 };
 const UUID = '11111111-1111-4111-8111-111111111111';
@@ -112,5 +114,19 @@ describe('cabeçalhos e CORS', () => {
   it('não libera CORS para origem desconhecida', async () => {
     const res = await request(app).get('/health').set('Origin', 'https://evil.com');
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+});
+
+describe('progresso real', () => {
+  it('GET /me calcula streak e minutos a partir de StudyActivity do próprio usuário', async () => {
+    const today = startOfTodayUtc();
+    mocks.prisma.flashcard.count.mockResolvedValue(5);
+    mocks.prisma.studyActivity.findMany.mockResolvedValue([
+      { date: today, seconds: 120 }, { date: addDaysUtc(today, -1), seconds: 1380 },
+    ]);
+    const res = await request(app).get('/api/me').set(auth);
+    expect(res.status).toBe(200);
+    expect(res.body.stats).toMatchObject({ streak: '2', words: '5', studyMinutes: 25, todayMinutes: 2, hours: '0.4' });
+    expect(mocks.prisma.studyActivity.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'u1' } }));
   });
 });
