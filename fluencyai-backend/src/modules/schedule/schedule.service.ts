@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma';
 import { generateJson } from '../../lib/ai/gemini';
 import { addDaysUtc, startOfTodayUtc } from '../../lib/dates';
 import { notFound } from '../../lib/errors';
+import { recordActivity } from '../activity/activity.service';
 
 interface ScheduleUser { id: string; level: string; studyTime: number }
 
@@ -125,7 +126,14 @@ export async function updateTask(
   id: string,
   data: { completed?: boolean; date?: Date; order?: number },
 ) {
+  const before =
+    data.completed === true
+      ? await prisma.kanbanTask.findFirst({ where: { id, userId }, select: { completed: true, type: true, duration: true } })
+      : null;
   const { count } = await prisma.kanbanTask.updateMany({ where: { id, userId }, data });
   if (count === 0) throw notFound('Tarefa não encontrada.');
+  if (before && before.type === 'video' && !before.completed) {
+    await recordActivity(userId, 'video', before.duration * 60);
+  }
   return prisma.kanbanTask.findFirstOrThrow({ where: { id, userId } });
 }

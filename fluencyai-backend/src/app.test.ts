@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   verifyIdToken: vi.fn(),
   prisma: {
     user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
-    kanbanTask: { updateMany: vi.fn(), findFirstOrThrow: vi.fn(), findMany: vi.fn() },
+    kanbanTask: { findFirst: vi.fn(), updateMany: vi.fn(), findFirstOrThrow: vi.fn(), findMany: vi.fn() },
     flashcard: { findFirst: vi.fn(), update: vi.fn(), count: vi.fn() },
     studyActivity: { upsert: vi.fn(), findMany: vi.fn() },
     message: { create: vi.fn() },
@@ -128,5 +128,38 @@ describe('progresso real', () => {
     expect(res.status).toBe(200);
     expect(res.body.stats).toMatchObject({ streak: '2', words: '5', studyMinutes: 25, todayMinutes: 2, hours: '0.4' });
     expect(mocks.prisma.studyActivity.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'u1' } }));
+  });
+
+  it('review em modo ditado registra atividade dictation de 40s', async () => {
+    mocks.prisma.flashcard.findFirst.mockResolvedValue({ id: UUID, interval: 0, easeFactor: 2.5 });
+    mocks.prisma.flashcard.update.mockResolvedValue({ id: UUID });
+    const res = await request(app).patch(`/api/flashcards/${UUID}/review`).set(auth).send({ quality: 1, mode: 'dictation' });
+    expect(res.status).toBe(200);
+    expect(mocks.prisma.studyActivity.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { userId_date_type: expect.objectContaining({ userId: 'u1', type: 'dictation' }) },
+      update: { seconds: { increment: 40 } },
+    }));
+  });
+
+  it('modo de review inválido retorna 400', async () => {
+    const res = await request(app).patch(`/api/flashcards/${UUID}/review`).set(auth).send({ quality: 1, mode: 'x' });
+    expect(res.status).toBe(400);
+  });
+
+  it('concluir tarefa de vídeo pendente credita duration*60 segundos', async () => {
+    mocks.prisma.kanbanTask.findFirst.mockResolvedValue({ completed: false, type: 'video', duration: 15 });
+    mocks.prisma.kanbanTask.updateMany.mockResolvedValue({ count: 1 });
+    mocks.prisma.kanbanTask.findFirstOrThrow.mockResolvedValue({ id: UUID });
+    await request(app).patch(`/api/schedule/task/${UUID}`).set(auth).send({ completed: true });
+    expect(mocks.prisma.kanbanTask.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: UUID, userId: 'u1' } }));
+    expect(mocks.prisma.studyActivity.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: { seconds: { increment: 900 } } }));
+  });
+
+  it('falha ao registrar atividade não quebra a revisão', async () => {
+    mocks.prisma.flashcard.findFirst.mockResolvedValue({ id: UUID, interval: 0, easeFactor: 2.5 });
+    mocks.prisma.flashcard.update.mockResolvedValue({ id: UUID });
+    mocks.prisma.studyActivity.upsert.mockRejectedValueOnce(new Error('db down'));
+    const res = await request(app).patch(`/api/flashcards/${UUID}/review`).set(auth).send({ quality: 2 });
+    expect(res.status).toBe(200);
   });
 });

@@ -4,6 +4,8 @@ import { groq } from '../../lib/ai/groq';
 import { AppError } from '../../lib/errors';
 import { env } from '../../config/env';
 import { logger } from '../../lib/logger';
+import { recordActivity } from '../activity/activity.service';
+import { CHAT_MESSAGE_SECONDS } from '../activity/activity';
 
 const SYSTEM_PROMPT = `You are an expert, strict but friendly native English teacher named Ana.
 CORE RULES:
@@ -70,6 +72,8 @@ export async function sendMessage(userId: string, message: string) {
     },
     include: { correction: true },
   });
+
+  await recordActivity(userId, 'chat', CHAT_MESSAGE_SECONDS);
 
   return { reply: aiMessage.content, correction: aiMessage.correction || null };
 }
