@@ -66,7 +66,7 @@ export async function sendMessage(userId: string, message: string) {
       content: parsed.reply,
       role: 'ASSISTANT',
       userId,
-      ...(parsed.correction && { correction: { create: parsed.correction } }),
+      ...(parsed.correction && { correction: { create: { ...parsed.correction, userId } } }),
     },
     include: { correction: true },
   });
