@@ -8,14 +8,21 @@ import { recordActivity } from '../activity/activity.service';
 
 interface ScheduleUser { id: string; level: string; studyTime: number }
 
-const YOUTUBE_RE = /^https:\/\/(www\.)?youtube\.com\//;
+// Busca no YouTube aulas do tema, em português (traz professores brasileiros).
+// "Gramática: Present Perfect" vira "aula de inglês Present Perfect".
+export function youtubeLessonUrl(title: string) {
+  const [prefix, ...rest] = title.split(':');
+  const topic = (rest.length && prefix.trim().length <= 20 ? rest.join(':') : title).trim();
+  const query = `aula de inglês ${topic}`;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&gl=BR`;
+}
 
-// Valida a resposta da IA antes de gravar: tipo restrito, tamanhos limitados e link só do YouTube
+// Valida a resposta da IA antes de gravar: tipo restrito e tamanhos limitados.
+// O link do vídeo é montado aqui a partir do título, não pela IA.
 const aiTask = z.object({
   type: z.enum(['video', 'flashcard', 'chat']),
   title: z.string().min(1).transform((s) => s.slice(0, 200)),
   duration: z.coerce.number().int().min(1).max(120),
-  link: z.string().nullish().transform((l) => (l && YOUTUBE_RE.test(l) ? l : null)),
 });
 const aiSchedule = z.object({
   schedule: z.array(z.object({ tasks: z.array(aiTask).min(1).max(6) })).min(1).max(7),
@@ -32,7 +39,7 @@ Retorne APENAS um objeto JSON com a estrutura:
 {
   "schedule": [
     { "day": 1, "tasks": [
-      { "type": "video", "title": "Gramática: Present Perfect", "duration": 15, "link": "https://www.youtube.com/results?search_query=learn+present+perfect+english" },
+      { "type": "video", "title": "Gramática: Present Perfect", "duration": 15 },
       { "type": "flashcard", "title": "Revisar: Vocabulário de Viagem", "duration": 10 },
       { "type": "chat", "title": "Simulação: Pedir comida num restaurante", "duration": 15 }
     ] }
@@ -41,7 +48,7 @@ Retorne APENAS um objeto JSON com a estrutura:
 Regras ESTRITAS:
 - Gere 7 dias completos (day 1 até day 7).
 - Cada dia DEVE ter exatamente 3 tarefas nesta ordem: 1 'video', 1 'flashcard', 1 'chat'.
-- O 'link' é obrigatório na tarefa 'video' (links de pesquisa do YouTube, começando com https://www.youtube.com/).
+- O título da tarefa 'video' deve nomear um tema de aula de inglês buscável (ex.: "Gramática: Present Perfect", "Pronúncia: TH").
 - Varie os temas ao longo dos 7 dias.
 - A SOMA das durações das 3 tarefas do dia deve ficar muito próxima de ${user.studyTime} minutos.
 `;
@@ -55,7 +62,7 @@ async function generateWeekTasks(user: ScheduleUser) {
       type: task.type,
       title: task.title,
       duration: task.duration,
-      link: task.link,
+      link: task.type === 'video' ? youtubeLessonUrl(task.title) : null,
       order,
       date: addDaysUtc(today, dayIndex),
       userId: user.id,

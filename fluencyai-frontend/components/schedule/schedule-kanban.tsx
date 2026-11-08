@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Play, MessageCircle, Clock, Check, Loader2, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { youtubeLessonUrl } from "@/lib/youtube"
 import { useAuth } from "@/components/auth/auth-provider"
 import { getSchedule, openTaskSession, resetSchedule, updateTask, type Task, type TaskType, type DaySchedule } from "@/lib/api"
 import { useRouter } from "next/navigation"
@@ -62,8 +63,8 @@ function SortableTaskCard({ task, onToggle }: { task: Task; onToggle: (id: strin
 
   // Redireciona a ação baseada no tipo principal da atividade ao disparar um clique
   const handleCardClick = () => {
-    if (normalizedType === "video" && task.link) {
-      window.open(task.link, "_blank"); 
+    if (normalizedType === "video") {
+      window.open(youtubeLessonUrl(task.title), "_blank", "noopener,noreferrer");
     } else if (normalizedType === "chat") {
       if (opening) return;
       setOpening(true);

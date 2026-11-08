@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { getMe, getSchedule, getDueCards } from "@/lib/api"
 import { Login } from "@/components/auth/login"
-import { Loader2 } from "lucide-react"
 
 import { AppShell } from "@/components/layout/app-shell"
 import { Header } from "@/components/layout/header"
@@ -13,6 +12,12 @@ import { KPICards, KPIData } from "@/components/dashboard/kpi-cards"
 import { ActionCenter, ActionData } from "@/components/dashboard/action-center"
 import { ProgressSection, ProgressData } from "@/components/dashboard/progress-section"
 import { SidePanel, ProfileSummary } from "@/components/dashboard/side-panel"
+import {
+  KPICardsSkeleton,
+  ActionCenterSkeleton,
+  ProgressSectionSkeleton,
+  SidePanelSkeleton,
+} from "@/components/dashboard/dashboard-skeleton"
 
 interface DashboardData {
   kpis: KPIData;
@@ -24,6 +29,7 @@ interface DashboardData {
 export default function DashboardPage() {
   const { user, loading: loadingAuth } = useAuth()
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [loadError, setLoadError] = useState(false)
 
   // Centraliza a requisição e a formatação de dados do painel do usuário
   const fetchDashboard = useCallback(async () => {
@@ -106,9 +112,11 @@ export default function DashboardPage() {
       };
 
       setDashboardData({ kpis, actions: { todayTasks, weekDays }, progress, profile: profileSummary });
+      setLoadError(false);
 
     } catch (error) {
       console.error("Erro a carregar o dashboard:", error);
+      setLoadError(true);
     }
   }, [user]);
 
@@ -121,34 +129,53 @@ export default function DashboardPage() {
     return () => window.removeEventListener('focus', fetchDashboard);
   }, [fetchDashboard]);
 
-  if (loadingAuth || (user && !dashboardData)) {
-    return (
-      <div className="flex h-screen flex-col gap-4 items-center justify-center bg-background">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground animate-pulse">A sincronizar o seu progresso...</p>
-      </div>
-    )
-  }
+  if (!loadingAuth && !user) return <Login />
 
-  if (!user) return <Login />
+  // A casca abre na hora; enquanto a sessão e os dados chegam, cada bloco mostra seu esqueleto
+  const firstName = user ? user.displayName?.split(' ')[0] || "Estudante" : undefined
 
   return (
     <AppShell>
-      <div className="mx-auto grid max-w-[1400px] gap-6 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-3 lg:py-3 lg:pr-3">
+      <div
+        className="mx-auto grid max-w-[1400px] gap-6 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-3 lg:py-3 lg:pr-3"
+        aria-busy={!dashboardData}
+      >
         <div className="flex min-w-0 flex-col gap-8 lg:px-6">
-          <Header
-            userName={user.displayName?.split(' ')[0] || "Estudante"}
-            reviewsCount={dashboardData!.kpis.reviews}
-          />
-          <KPICards data={dashboardData!.kpis} />
-          <ActionCenter data={dashboardData!.actions} />
-          <ProgressSection data={dashboardData!.progress} />
+          <Header userName={firstName} reviewsCount={dashboardData?.kpis.reviews} />
+          {dashboardData ? (
+            <>
+              <KPICards data={dashboardData.kpis} />
+              <ActionCenter data={dashboardData.actions} />
+              <ProgressSection data={dashboardData.progress} />
+            </>
+          ) : loadError ? (
+            <div role="alert" className="flex flex-col items-start gap-3 rounded-[28px] bg-cat-streak p-6">
+              <p className="text-xl font-medium tracking-tight text-foreground">Não foi possível carregar seu progresso</p>
+              <p className="max-w-[44ch] text-sm text-foreground/75">Verifique sua conexão e tente de novo.</p>
+              <button
+                onClick={fetchDashboard}
+                className="mt-1 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Tentar de novo
+              </button>
+            </div>
+          ) : (
+            <>
+              <KPICardsSkeleton />
+              <ActionCenterSkeleton />
+              <ProgressSectionSkeleton />
+            </>
+          )}
         </div>
-        <SidePanel
-          profile={dashboardData!.profile}
-          weekDays={dashboardData!.actions.weekDays}
-          weeklyChart={dashboardData!.progress.weeklyChart}
-        />
+        {dashboardData ? (
+          <SidePanel
+            profile={dashboardData.profile}
+            weekDays={dashboardData.actions.weekDays}
+            weeklyChart={dashboardData.progress.weeklyChart}
+          />
+        ) : (
+          <SidePanelSkeleton name={user?.displayName || undefined} photoURL={user?.photoURL} />
+        )}
       </div>
     </AppShell>
   )
