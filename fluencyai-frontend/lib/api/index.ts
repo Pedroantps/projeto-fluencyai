@@ -1,7 +1,7 @@
 import { apiBlob, apiJson, jsonBody } from "./client"
 import type {
-  ChatMessage, ChatReply, DaySchedule, Flashcard, MeResponse,
-  PreferencesInput, TaskUpdate, TranscribeResponse,
+  ChatMessage, ChatReply, ChatSessionSummary, DaySchedule, ErrorsResponse, Flashcard, MeResponse,
+  PreferencesInput, TaskUpdate, TranscribeResponse, WordLookup,
 } from "./types"
 
 export { ApiError } from "./client"
@@ -28,20 +28,36 @@ export function updateTask(id: string, update: TaskUpdate) {
   return apiJson<unknown>(`/api/schedule/task/${encodeURIComponent(id)}`, jsonBody("PATCH", update))
 }
 
-export function sendChat(message: string) {
-  return apiJson<ChatReply>("/api/chat", jsonBody("POST", { message }))
+export function listChatSessions() {
+  return apiJson<ChatSessionSummary[]>("/api/chat/sessions", { cache: "no-store" })
 }
 
-export function getChatHistory() {
-  return apiJson<ChatMessage[]>("/api/chat/history")
+export function createChatSession(title?: string) {
+  return apiJson<ChatSessionSummary>("/api/chat/sessions", jsonBody("POST", title ? { title } : {}))
 }
 
-export function clearChatHistory() {
-  return apiJson<unknown>("/api/chat/history", { method: "DELETE" })
+export function deleteChatSession(id: string) {
+  return apiJson<unknown>(`/api/chat/sessions/${encodeURIComponent(id)}`, { method: "DELETE" })
+}
+
+export function getSessionMessages(id: string) {
+  return apiJson<ChatMessage[]>(`/api/chat/sessions/${encodeURIComponent(id)}/messages`, { cache: "no-store" })
+}
+
+export function sendSessionMessage(id: string, message: string) {
+  return apiJson<ChatReply>(`/api/chat/sessions/${encodeURIComponent(id)}/messages`, jsonBody("POST", { message }))
+}
+
+export function openTaskSession(taskId: string) {
+  return apiJson<{ sessionId: string; created: boolean }>("/api/chat/sessions/open-task", jsonBody("POST", { taskId }))
 }
 
 export function saveWord(word: string, context?: string) {
   return apiJson<unknown>("/api/words/save", jsonBody("POST", { word, context }))
+}
+
+export function lookupWord(word: string, context?: string) {
+  return apiJson<WordLookup>("/api/words/lookup", jsonBody("POST", { word, context }))
 }
 
 export function generateDeck() {
@@ -52,8 +68,9 @@ export function getDueCards() {
   return apiJson<Flashcard[]>("/api/flashcards/due", { cache: "no-store" })
 }
 
-export function reviewCard(id: string, quality: number) {
-  return apiJson<unknown>(`/api/flashcards/${encodeURIComponent(id)}/review`, jsonBody("PATCH", { quality }))
+export function reviewCard(id: string, quality: number, mode?: "normal" | "dictation") {
+  const body = mode ? { quality, mode } : { quality }
+  return apiJson<unknown>(`/api/flashcards/${encodeURIComponent(id)}/review`, jsonBody("PATCH", body))
 }
 
 export function transcribeAudio(audio: Blob, filename = "recording.webm") {
@@ -65,4 +82,12 @@ export function transcribeAudio(audio: Blob, filename = "recording.webm") {
 
 export function synthesizeSpeech(text: string) {
   return apiBlob("/api/tts", jsonBody("POST", { text }))
+}
+
+export function getErrors() {
+  return apiJson<ErrorsResponse>("/api/errors", { cache: "no-store" })
+}
+
+export function createErrorCards(ids?: string[]) {
+  return apiJson<{ count: number }>("/api/errors/flashcards", jsonBody("POST", ids ? { ids } : {}))
 }

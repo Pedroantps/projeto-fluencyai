@@ -4,7 +4,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { navItems } from "@/components/layout/sidebar"
-import { ThemeToggle } from "@/components/layout/theme-toggle"
 
 /** Pílula flutuante no mobile. */
 export function BottomNav() {
@@ -16,7 +15,7 @@ export function BottomNav() {
       className="fixed inset-x-3 bottom-3 z-50 flex items-center justify-between gap-1 rounded-full bg-sidebar p-1.5 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.25)] md:hidden"
     >
       {navItems.map(({ href, icon: Icon, label }) => {
-        const active = pathname === href
+        const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/")
         return (
           <Link
             key={href}
@@ -33,7 +32,6 @@ export function BottomNav() {
           </Link>
         )
       })}
-      <ThemeToggle className="h-12 w-12 shrink-0 bg-transparent" />
     </nav>
   )
 }

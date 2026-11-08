@@ -13,31 +13,60 @@ model User {
   name        String
   email       String   @unique
   level       Level    @default(B1)
-  studyTime  Int      @default(30)
-  createdAt DateTime @default(now())
+  studyTime   Int      @default(30)
+  createdAt   DateTime @default(now())
 
   // Relacionamentos: Um usuário tem várias mensagens, flashcards e tarefas
-  messages   Message[]
-  flashcards Flashcard[]
-  tasks      KanbanTask[]
-  wordBank   WordBank[]
+  messages    Message[]
+  chatSessions ChatSession[]
+  flashcards  Flashcard[]
+  tasks       KanbanTask[]
+  wordBank    WordBank[]
+  corrections Correction[]
+  activities  StudyActivity[]
 }
 
 // 2. Histórico do Chat
 model Message {
   id        String   @id @default(uuid())
   content   String   @db.Text
-  role      Role     // Enum: USER ou ASSISTANT
+  role      Role // Enum: USER ou ASSISTANT
   createdAt DateTime @default(now())
 
   // Chave estrangeira para o User
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Sessão (conversa) à qual a mensagem pertence
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   // Relação 1 para 1 com a Correção (uma mensagem da IA pode ter uma correção)
   correction Correction?
 
   @@index([userId, createdAt])
+  @@index([sessionId, createdAt])
+}
+
+// 2b. Sessões de conversa com a Ana
+model ChatSession {
+  id        String   @id @default(uuid())
+  title     String
+  topic     String? // Assunto vindo do Kanban (usado para reabrir a mesma sessão)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // A tarefa pode ser apagada ao gerar novo plano: a sessão sobrevive
+  taskId String?     @unique
+  task   KanbanTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  messages Message[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, topic])
 }
 
 enum Role {
@@ -47,34 +76,73 @@ enum Role {
 
 // 3. Notas da Professora (Teacher's Note)
 model Correction {
-  id          String @id @default(uuid())
-  original    String @db.Text
-  corrected   String @db.Text
-  explanation String @db.Text
+  id               String        @id @default(uuid())
+  original         String        @db.Text
+  corrected        String        @db.Text
+  explanation      String        @db.Text
+  category         ErrorCategory @default(other)
+  flashcardCreated Boolean       @default(false)
+  createdAt        DateTime      @default(now())
 
-  // Chave estrangeira para a Message
-  messageId   String  @unique
-  message     Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Opcional: a correção sobrevive ao "Novo Chat" (mensagem apagada -> NULL)
+  messageId String?  @unique
+  message   Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+model StudyActivity {
+  id        String       @id @default(uuid())
+  date      DateTime     @db.Date // dia UTC
+  type      ActivityType
+  seconds   Int          @default(0)
+  createdAt DateTime     @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, type])
+}
+
+enum ErrorCategory {
+  verb_tense
+  preposition
+  article
+  word_order
+  word_choice
+  portuguese_word
+  spelling
+  other
+}
+
+enum ActivityType {
+  chat
+  flashcard
+  video
+  dictation
 }
 
 // 4. Repositório de Palavras (Flashcards)
 model Flashcard {
-  id             String   @id @default(uuid())
-  front          String   // A palavra em inglês
-  back           String   // Tradução e explicação
-  
+  id    String @id @default(uuid())
+  front String // A palavra em inglês
+  back  String // Tradução e explicação
+
   // NOVA COLUNA: Para saber de onde veio (chat, cronograma, aleatorio)
-  source         CardSource @default(chat)
-  
+  source CardSource @default(chat)
+
   // Campos para o algoritmo de repetição espaçada (como o Anki)
   nextReviewDate DateTime @default(now())
   interval       Int      @default(0) // Em dias
   easeFactor     Float    @default(2.5)
-  
-  createdAt      DateTime @default(now())
 
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, nextReviewDate])
 }
@@ -85,15 +153,17 @@ model KanbanTask {
   type        TaskType
   title       String
   description String?  @db.Text
-  link        String?  // Link do YouTube
+  link        String? // Link do YouTube
   duration    Int      @default(15) // Duração em minutos
   completed   Boolean  @default(false) // Substitui o enum, perfeito para a bolinha de check
   order       Int      @default(0) // Para o Drag and Drop saber a posição
   date        DateTime // Para saber em qual coluna (Dia da semana) ele vai ficar
   createdAt   DateTime @default(now())
 
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  chatSession ChatSession?
 
   @@index([userId, date])
 }
@@ -106,8 +176,8 @@ model WordBank {
   used      Boolean  @default(false) // Fica 'true' quando virar flashcard
   createdAt DateTime @default(now())
 
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, used])
 }
@@ -131,4 +201,5 @@ enum CardSource {
   chat
   cronograma
   aleatorio
+  erro
 }

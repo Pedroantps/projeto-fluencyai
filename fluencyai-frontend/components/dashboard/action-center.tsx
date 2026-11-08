@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Brain, MessageCircle, Play, LayoutGrid, CheckCircle, ArrowUpRight, Clock } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { youtubeLessonUrl } from "@/lib/youtube"
 
 export interface ActionData {
   todayTasks: any[];
@@ -66,7 +67,7 @@ export function ActionCenter({ data }: { data: ActionData }) {
   const tasks = data.todayTasks.filter((t) => filter === "all" || t.type === filter)
 
   const handleActionClick = (task: any) => {
-    if (task.type === "video" && task.link) window.open(task.link, "_blank", "noopener,noreferrer")
+    if (task.type === "video") window.open(youtubeLessonUrl(task.title), "_blank", "noopener,noreferrer")
     else if (task.type === "chat") router.push("/chat")
     else if (task.type === "flashcard") router.push("/review")
   }

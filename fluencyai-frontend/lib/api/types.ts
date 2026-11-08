@@ -4,6 +4,8 @@ export interface UserStats {
   streak: string | number
   words: string | number
   hours: string | number
+  studyMinutes: number
+  todayMinutes: number
   level: string
   studyTime: number | null
 }
@@ -42,10 +44,37 @@ export interface TaskUpdate {
   order?: number
 }
 
+export type ErrorCategory =
+  | "verb_tense" | "preposition" | "article" | "word_order"
+  | "word_choice" | "portuguese_word" | "spelling" | "other"
+
 export interface Correction {
   original: string
   corrected: string
   explanation: string
+  category?: ErrorCategory
+}
+
+export interface ErrorItem {
+  id: string
+  original: string
+  corrected: string
+  explanation: string
+  category: ErrorCategory
+  createdAt: string
+  flashcardCreated: boolean
+}
+
+export interface ErrorGroup {
+  category: ErrorCategory
+  count: number
+  items: ErrorItem[]
+}
+
+export interface ErrorsResponse {
+  total: number
+  pending: number
+  groups: ErrorGroup[]
 }
 
 export interface ChatMessage {
@@ -53,6 +82,14 @@ export interface ChatMessage {
   content: string
   role: "user" | "assistant"
   correction?: Correction
+}
+
+export interface ChatSessionSummary {
+  id: string
+  title: string
+  topic: string | null
+  updatedAt: string
+  preview: string
 }
 
 export interface ChatReply {
@@ -69,4 +106,10 @@ export interface Flashcard {
 
 export interface TranscribeResponse {
   text: string
+}
+
+export interface WordLookup {
+  word: string
+  translation: string
+  meaning: string
 }

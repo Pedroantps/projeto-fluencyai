@@ -5,7 +5,10 @@ import { aiLimiter } from '../../middlewares/rate-limit';
 import { generateBatch, getDueCards, reviewCard } from './flashcards.service';
 import type { Quality } from './srs';
 
-const reviewBody = z.object({ quality: z.number().int().min(0).max(2) });
+const reviewBody = z.object({
+  quality: z.number().int().min(0).max(2),
+  mode: z.enum(['normal', 'dictation']).default('normal'),
+});
 
 export const flashcardsRouter = Router();
 
@@ -21,6 +24,7 @@ flashcardsRouter.patch(
   '/flashcards/:id/review',
   validate({ params: idParam, body: reviewBody }),
   async (req, res) => {
-    res.json(await reviewCard(req.user.id, req.validated.params.id, req.validated.body.quality as Quality));
+    const { quality, mode } = req.validated.body;
+    res.json(await reviewCard(req.user.id, req.validated.params.id, quality as Quality, mode));
   },
 );

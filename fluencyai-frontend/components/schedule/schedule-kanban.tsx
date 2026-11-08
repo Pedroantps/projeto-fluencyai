@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react"
 import { Play, MessageCircle, Clock, Check, Loader2, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { youtubeLessonUrl } from "@/lib/youtube"
 import { useAuth } from "@/components/auth/auth-provider"
-import { getSchedule, resetSchedule, updateTask, type Task, type TaskType, type DaySchedule } from "@/lib/api"
+import { getSchedule, openTaskSession, resetSchedule, updateTask, type Task, type TaskType, type DaySchedule } from "@/lib/api"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 // Importa módulos de comportamento de interface Drag and Drop via biblioteca genérica
 import { 
@@ -35,7 +37,8 @@ function FlashcardIcon({ className }: { className?: string }) {
 // Renderiza o invólucro interativo unitário contendo as definições de uma tarefa
 function SortableTaskCard({ task, onToggle }: { task: Task; onToggle: (id: string) => void }) {
   const router = useRouter();
-  
+  const [opening, setOpening] = useState(false);
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: "Task", task }
@@ -60,10 +63,18 @@ function SortableTaskCard({ task, onToggle }: { task: Task; onToggle: (id: strin
 
   // Redireciona a ação baseada no tipo principal da atividade ao disparar um clique
   const handleCardClick = () => {
-    if (normalizedType === "video" && task.link) {
-      window.open(task.link, "_blank"); 
+    if (normalizedType === "video") {
+      window.open(youtubeLessonUrl(task.title), "_blank", "noopener,noreferrer");
     } else if (normalizedType === "chat") {
-      router.push("/chat");
+      if (opening) return;
+      setOpening(true);
+      openTaskSession(task.id)
+        .then(({ sessionId }) => router.push(`/chat/${sessionId}`))
+        .catch((error) => {
+          console.error("Erro ao abrir a sessão:", error);
+          toast.error("Não foi possível abrir a conversa.");
+          setOpening(false);
+        });
     } else if (normalizedType === "flashcard") {
       router.push("/review"); 
     }

@@ -17,7 +17,8 @@ export function AppShell({ children, fullHeight, className }: AppShellProps) {
       <main
         className={cn(
           "min-w-0 md:ml-[100px]",
-          fullHeight ? "flex flex-1 flex-col pb-24 md:pb-0" : "pb-28 md:pb-10",
+          // Pílula mobile: 60px de altura + 12px até a borda; o chat deixa mais 12px de respiro acima dela
+          fullHeight ? "flex flex-1 flex-col pb-[84px] md:pb-0" : "pb-28 md:pb-10",
           className
         )}
       >

@@ -1,13 +1,15 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Mic, Send, Volume2, ChevronDown, Sparkles, Loader2, BookmarkPlus, X, RefreshCcw } from "lucide-react"
+import { Mic, Send, Volume2, ChevronDown, Sparkles, Loader2, BookmarkPlus, X, ArrowLeft } from "lucide-react"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth/auth-provider"
 import { toast } from "sonner"
 import { speak } from "@/lib/speech"
+import { TappableText } from "@/components/chat/tappable-text"
 import {
-  clearChatHistory, getChatHistory, saveWord, sendChat, transcribeAudio,
+  getSessionMessages, saveWord, sendSessionMessage, transcribeAudio,
   type ChatMessage as Message,
 } from "@/lib/api"
 
@@ -44,7 +46,7 @@ function ChatBubble({ message, onSaveWord }: { message: Message, onSaveWord?: (c
           </div>
         )}
         
-        <p className="whitespace-pre-wrap">{message.content}</p>
+        {isUser ? <p className="whitespace-pre-wrap">{message.content}</p> : <TappableText text={message.content} />}
         
         {/* BOTÕES DE AÇÃO DA IA (Listen & Save Word) */}
         {!isUser && (
@@ -152,8 +154,8 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-2 px-3 py-3 sm:px-5 bg-background">
-      <div className="flex-1 min-w-0 flex items-center px-4 py-3 rounded-full bg-card focus-within:ring-2 focus-within:ring-ring transition-colors">
+    <form onSubmit={handleSubmit} className="flex items-center gap-2 px-3 pt-2 sm:px-5 md:py-3 bg-background">
+      <div className="flex-1 min-w-0 flex h-11 items-center px-4 rounded-full bg-card focus-within:ring-2 focus-within:ring-ring transition-colors">
         <input
           type="text"
           value={message}
@@ -194,9 +196,11 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
 // ==========================================
 // 3. COMPONENTE PRINCIPAL (INTERFACE)
 // ==========================================
-export function ChatInterface() {
+export function ChatInterface({ sessionId }: { sessionId: string }) {
   const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingHistory, setLoadingHistory] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
   // Começa vazio, vai ser preenchido pela base de dados
@@ -207,30 +211,23 @@ export function ChatInterface() {
   const [wordToSave, setWordToSave] = useState("")
   const [isSavingWord, setIsSavingWord] = useState(false)
 
-  // Busca o histórico assim que o email estiver disponível
+  // Carrega as mensagens da sessão
   const loadHistory = async () => {
+    setLoadFailed(false)
     try {
-      {
-        const data = await getChatHistory()
-        if (data.length > 0) {
-          setMessages(data) // Carrega as 24h
-        } else {
-          // Se estiver vazio, dá o "Olá" inicial
-          setMessages([{
-            id: "welcome",
-            role: "assistant",
-            content: "Hello! I'm Ana, your AI English teacher. What would you like to practice today? You can speak in Portuguese if you forget a word!"
-          }])
-        }
-      }
+      setMessages(await getSessionMessages(sessionId))
     } catch (error) {
-      console.error("Erro a carregar histórico", error)
+      console.error("Erro a carregar sessão", error)
+      setLoadFailed(true)
+    } finally {
+      setLoadingHistory(false)
     }
   }
 
   useEffect(() => {
     if (user) loadHistory();
-  }, [user])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, sessionId])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -245,7 +242,7 @@ export function ChatInterface() {
     setIsLoading(true)
 
     try {
-      const data = await sendChat(content)
+      const data = await sendSessionMessage(sessionId, content)
       
       const newAiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -267,25 +264,6 @@ export function ChatInterface() {
     }
   }
 
-  // Lógica do NOVO CHAT (Limpa tudo)
-  const handleNewChat = async () => {
-    if (!user || isLoading) return;
-    
-    // Limpa o ecrã instantaneamente
-    setMessages([{
-      id: Date.now().toString(),
-      role: "assistant",
-      content: "Chat cleared! What's on your mind today? Let's start fresh."
-    }]);
-
-    try {
-      // Pede à base de dados para apagar o histórico
-      await clearChatHistory();
-    } catch (error) {
-      console.error("Erro ao limpar chat", error);
-    }
-  }
-
   const handleSaveWord = async () => {
     if (!wordToSave.trim() || !user) return;
     setIsSavingWord(true);
@@ -303,28 +281,30 @@ export function ChatInterface() {
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* CABEÇALHO COM BOTÃO DE NOVO CHAT */}
+      {/* CABEÇALHO COM VOLTAR ÀS SESSÕES */}
       <div className="flex items-center gap-3 px-4 sm:px-6 pt-5 pb-3 shrink-0">
+        <Link href="/chat" aria-label="Voltar às conversas" className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-foreground hover:bg-surface-hover transition-colors shrink-0">
+          <ArrowLeft className="w-5 h-5" />
+        </Link>
         <div className="w-11 h-11 rounded-full bg-cat-chat flex items-center justify-center shrink-0">
           <Sparkles className="w-5 h-5 text-foreground" />
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-medium tracking-tight text-foreground truncate">Pratique com a Ana</h2>
-          <p className="text-xs text-muted-foreground truncate">Fale ou escreva em inglês. Ela corrige você.</p>
+          <p className="text-xs text-muted-foreground truncate">Fale ou escreva em inglês. Toque numa palavra da Ana para traduzir.</p>
         </div>
         
-        {/* NOVO BOTÃO AQUI */}
-        <button 
-          onClick={handleNewChat}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card text-foreground hover:bg-surface-hover transition-colors text-xs font-medium"
-        >
-          <RefreshCcw className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Novo Chat</span>
-        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 sm:p-5">
         <div className="flex flex-col gap-3 sm:gap-4">
+          {loadingHistory && <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>}
+          {loadFailed && (
+            <div className="flex flex-col items-center gap-3 py-8 text-sm text-muted-foreground">
+              Não foi possível carregar a conversa.
+              <button onClick={() => { setLoadingHistory(true); loadHistory() }} className="px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium">Tentar de novo</button>
+            </div>
+          )}
           {messages.map((message) => (
             <ChatBubble 
               key={message.id} 

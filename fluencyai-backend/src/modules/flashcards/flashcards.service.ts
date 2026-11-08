@@ -4,6 +4,8 @@ import { generateJson, sanitizeForPrompt } from '../../lib/ai/gemini';
 import { addDaysUtc, startOfTodayUtc } from '../../lib/dates';
 import { notFound } from '../../lib/errors';
 import { review, type Quality } from './srs';
+import { recordActivity } from '../activity/activity.service';
+import { DICTATION_REVIEW_SECONDS, FLASHCARD_REVIEW_SECONDS } from '../activity/activity';
 
 const aiCards = z
   .array(
@@ -66,8 +68,14 @@ export const getDueCards = (userId: string) =>
     orderBy: { nextReviewDate: 'asc' },
   });
 
-export async function reviewCard(userId: string, id: string, quality: Quality) {
+export async function reviewCard(userId: string, id: string, quality: Quality, mode: 'normal' | 'dictation' = 'normal') {
   const card = await prisma.flashcard.findFirst({ where: { id, userId } });
   if (!card) throw notFound('Flashcard não encontrado.');
-  return prisma.flashcard.update({ where: { id }, data: review(card, quality) });
+  const updated = await prisma.flashcard.update({ where: { id }, data: review(card, quality) });
+  await recordActivity(
+    userId,
+    mode === 'dictation' ? 'dictation' : 'flashcard',
+    mode === 'dictation' ? DICTATION_REVIEW_SECONDS : FLASHCARD_REVIEW_SECONDS,
+  );
+  return updated;
 }
