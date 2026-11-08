@@ -154,8 +154,8 @@ function ChatInput({ onSend, isLoading }: { onSend: (message: string) => void, i
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-2 px-3 py-3 sm:px-5 bg-background">
-      <div className="flex-1 min-w-0 flex items-center px-4 py-3 rounded-full bg-card focus-within:ring-2 focus-within:ring-ring transition-colors">
+    <form onSubmit={handleSubmit} className="flex items-center gap-2 px-3 pt-2 sm:px-5 md:py-3 bg-background">
+      <div className="flex-1 min-w-0 flex h-11 items-center px-4 rounded-full bg-card focus-within:ring-2 focus-within:ring-ring transition-colors">
         <input
           type="text"
           value={message}
