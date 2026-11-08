@@ -1,6 +1,7 @@
 "use client"
 
-import { Home, CalendarDays, Layers, MessageCircle, User, NotebookPen } from "lucide-react"
+import { Home, CalendarDays, Layers, MessageCircle, User } from "lucide-react"
+import { LogoMark } from "@/components/brand/logo"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -23,9 +24,9 @@ export function Sidebar() {
       <Link
         href="/"
         aria-label="FluencyAI"
-        className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground"
+        className="flex h-11 w-11 items-center justify-center rounded-[14px]"
       >
-        <NotebookPen className="h-5 w-5" />
+        <LogoMark />
       </Link>
 
       <nav className="my-auto flex flex-col gap-3" aria-label="Principal">
