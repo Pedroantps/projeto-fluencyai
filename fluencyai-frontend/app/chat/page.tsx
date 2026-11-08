@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/layout/app-shell"
-import { ChatInterface } from "@/components/chat/chat-interface"
+import { SessionList } from "@/components/chat/session-list"
 
 export default function ChatPage() {
   return (
-    <AppShell fullHeight>
-      <ChatInterface />
+    <AppShell>
+      <SessionList />
     </AppShell>
   )
 }

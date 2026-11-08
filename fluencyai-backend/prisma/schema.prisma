@@ -18,6 +18,7 @@ model User {
 
   // Relacionamentos: Um usuário tem várias mensagens, flashcards e tarefas
   messages    Message[]
+  chatSessions ChatSession[]
   flashcards  Flashcard[]
   tasks       KanbanTask[]
   wordBank    WordBank[]
@@ -36,10 +37,36 @@ model Message {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Sessão (conversa) à qual a mensagem pertence
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
   // Relação 1 para 1 com a Correção (uma mensagem da IA pode ter uma correção)
   correction Correction?
 
   @@index([userId, createdAt])
+  @@index([sessionId, createdAt])
+}
+
+// 2b. Sessões de conversa com a Ana
+model ChatSession {
+  id        String   @id @default(uuid())
+  title     String
+  topic     String? // Assunto vindo do Kanban (usado para reabrir a mesma sessão)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // A tarefa pode ser apagada ao gerar novo plano: a sessão sobrevive
+  taskId String?     @unique
+  task   KanbanTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  messages Message[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, topic])
 }
 
 enum Role {
@@ -135,6 +162,8 @@ model KanbanTask {
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  chatSession ChatSession?
 
   @@index([userId, date])
 }

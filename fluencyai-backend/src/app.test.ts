@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     $transaction: vi.fn(async (arg: unknown) => (typeof arg === 'function' ? (arg as (t: unknown) => unknown)(mocks.prisma) : Promise.all(arg as unknown[]))),
     studyActivity: { upsert: vi.fn(), findMany: vi.fn() },
     message: { create: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn() },
+    chatSession: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
   },
 }));
 
@@ -73,7 +74,7 @@ describe('autorização (IDOR)', () => {
 
 describe('validação de entrada', () => {
   it('chat com mensagem gigante retorna 400', async () => {
-    const res = await request(app).post('/api/chat').set(auth).send({ message: 'x'.repeat(2001) });
+    const res = await request(app).post(`/api/chat/sessions/${UUID}/messages`).set(auth).send({ message: 'x'.repeat(2001) });
     expect(res.status).toBe(400);
   });
 
@@ -182,10 +183,11 @@ describe('progresso real', () => {
 
 describe('chat adaptado ao nível', () => {
   it('chat usa o nível do aluno no prompt e salva a correção com userId e categoria', async () => {
+    mocks.prisma.chatSession.findFirst.mockResolvedValue({ id: UUID, userId: 'u1', title: 'Nova conversa', topic: null });
     mocks.prisma.message.findMany.mockResolvedValue([]);
     mocks.completeJson.mockResolvedValue({ reply: 'Nice!', correction: { original: 'I goed', corrected: 'I went', explanation: 'Past of go.', category: 'verb_tense' } });
     mocks.prisma.message.create.mockResolvedValueOnce({}).mockResolvedValueOnce({ content: 'Nice!', correction: { category: 'verb_tense' } });
-    const res = await request(app).post('/api/chat').set(auth).send({ message: 'I goed home' });
+    const res = await request(app).post(`/api/chat/sessions/${UUID}/messages`).set(auth).send({ message: 'I goed home' });
     expect(res.status).toBe(200);
     expect(mocks.completeJson.mock.calls[0][0][0].content).toContain('CEFR level B1');
     expect(mocks.prisma.message.create).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -246,11 +248,54 @@ describe('banco de erros', () => {
     const res = await request(app).post('/api/errors/flashcards').set(auth).send({ ids: ['abc'] });
     expect(res.status).toBe(400);
   });
-  it('Novo Chat apaga mensagens mas não correções', async () => {
-    mocks.prisma.message.deleteMany.mockResolvedValue({ count: 3 });
-    await request(app).delete('/api/chat/history').set(auth);
-    expect(mocks.prisma.message.deleteMany).toHaveBeenCalledWith({ where: { userId: 'u1' } });
+  it('apagar sessão remove só a sessão do usuário e não toca nas correções', async () => {
+    mocks.prisma.chatSession.deleteMany.mockResolvedValue({ count: 1 });
+    const res = await request(app).delete(`/api/chat/sessions/${UUID}`).set(auth);
+    expect(res.status).toBe(200);
+    expect(mocks.prisma.chatSession.deleteMany).toHaveBeenCalledWith({ where: { id: UUID, userId: 'u1' } });
     expect(mocks.prisma.correction.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('sessões de chat', () => {
+  it('sessão de outro usuário retorna 404 ao ler mensagens', async () => {
+    mocks.prisma.chatSession.findFirst.mockResolvedValue(null);
+    const res = await request(app).get(`/api/chat/sessions/${UUID}/messages`).set(auth);
+    expect(res.status).toBe(404);
+    expect(mocks.prisma.chatSession.findFirst).toHaveBeenCalledWith({ where: { id: UUID, userId: 'u1' } });
+  });
+  it('open-task cria a sessão com mensagem de abertura da Ana quando não existe', async () => {
+    mocks.prisma.kanbanTask.findFirst.mockResolvedValue({ id: UUID, type: 'chat', title: 'Pedir comida num restaurante' });
+    mocks.prisma.chatSession.findFirst.mockResolvedValue(null);
+    mocks.completeJson.mockResolvedValue({ reply: 'Hi! Ready to order?', correction: null });
+    mocks.prisma.chatSession.create.mockResolvedValue({ id: 's1' });
+    const res = await request(app).post('/api/chat/sessions/open-task').set(auth).send({ taskId: UUID });
+    expect(res.body).toEqual({ sessionId: 's1', created: true });
+    expect(mocks.completeJson.mock.calls[0][0][0].content).toContain('Pedir comida num restaurante');
+    expect(mocks.prisma.chatSession.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ userId: 'u1', taskId: UUID, topic: 'Pedir comida num restaurante' }),
+    });
+  });
+  it('open-task reabre a sessão existente sem chamar a IA', async () => {
+    mocks.prisma.kanbanTask.findFirst.mockResolvedValue({ id: UUID, type: 'chat', title: 'Tema' });
+    mocks.prisma.chatSession.findFirst.mockResolvedValue({ id: 's9', taskId: UUID });
+    const res = await request(app).post('/api/chat/sessions/open-task').set(auth).send({ taskId: UUID });
+    expect(res.body).toEqual({ sessionId: 's9', created: false });
+    expect(mocks.completeJson).not.toHaveBeenCalled();
+    expect(mocks.prisma.chatSession.create).not.toHaveBeenCalled();
+  });
+  it('open-task reaproveita a sessão pelo assunto quando a tarefa foi recriada', async () => {
+    mocks.prisma.kanbanTask.findFirst.mockResolvedValue({ id: UUID, type: 'chat', title: 'Tema' });
+    mocks.prisma.chatSession.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 's7', taskId: null });
+    mocks.prisma.chatSession.updateMany.mockResolvedValue({ count: 1 });
+    const res = await request(app).post('/api/chat/sessions/open-task').set(auth).send({ taskId: UUID });
+    expect(res.body).toEqual({ sessionId: 's7', created: false });
+  });
+  it('open-task em tarefa de outro usuário ou que não é de chat é rejeitado', async () => {
+    mocks.prisma.kanbanTask.findFirst.mockResolvedValue(null);
+    expect((await request(app).post('/api/chat/sessions/open-task').set(auth).send({ taskId: UUID })).status).toBe(404);
+    mocks.prisma.kanbanTask.findFirst.mockResolvedValue({ id: UUID, type: 'video', title: 'x' });
+    expect((await request(app).post('/api/chat/sessions/open-task').set(auth).send({ taskId: UUID })).status).toBe(400);
   });
 });
 

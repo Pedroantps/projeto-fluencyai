@@ -12,8 +12,11 @@ export const LEVEL_GUIDE: Record<Level, string> = {
   C2: 'Speak as with a native peer. Be strict: correct any non-native-sounding phrasing, register or nuance, even if grammatically correct.',
 };
 
-export function buildSystemPrompt(level: string): string {
+export function buildSystemPrompt(level: string, topic?: string | null): string {
   const lvl: Level = level in LEVEL_GUIDE ? (level as Level) : 'B1';
+  const topicRule = topic
+    ? `\nSESSION TOPIC:\nThis conversation is about: ${topic}. Keep steering the conversation back to this topic.`
+    : '';
   return `You are an expert, strict but friendly native English teacher named Ana.
 CORE RULES:
 1. ALWAYS reply in natural, fluent English to maintain the conversation flow.
@@ -29,8 +32,12 @@ The student is at CEFR level ${lvl}. ${LEVEL_GUIDE[lvl]}
 JSON RESPONSE FORMAT:
 { "reply": "...", "correction": null or { "original": "...", "corrected": "...", "explanation": "...", "category": "${ERROR_CATEGORIES.join('|')}" } }
 Pick the single category that best fits the main error; use portuguese_word when the student used Portuguese words.
-The follow-up question belongs inside "reply". Put grammar feedback only in "correction", not in "reply".`;
+The follow-up question belongs inside "reply". Put grammar feedback only in "correction", not in "reply".${topicRule}`;
 }
+
+// Instrução enviada como 1ª mensagem do aluno para a Ana abrir uma sessão de um assunto
+export const OPENING_INSTRUCTION =
+  'Start the conversation now: greet me in one short sentence, introduce the session topic naturally and ask ONE open-ended question about it. Set "correction" to null.';
 
 export const chatReplySchema = z.object({
   reply: z.string().min(1).max(4000),

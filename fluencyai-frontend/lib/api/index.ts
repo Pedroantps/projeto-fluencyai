@@ -1,6 +1,6 @@
 import { apiBlob, apiJson, jsonBody } from "./client"
 import type {
-  ChatMessage, ChatReply, DaySchedule, ErrorsResponse, Flashcard, MeResponse,
+  ChatMessage, ChatReply, ChatSessionSummary, DaySchedule, ErrorsResponse, Flashcard, MeResponse,
   PreferencesInput, TaskUpdate, TranscribeResponse, WordLookup,
 } from "./types"
 
@@ -28,16 +28,28 @@ export function updateTask(id: string, update: TaskUpdate) {
   return apiJson<unknown>(`/api/schedule/task/${encodeURIComponent(id)}`, jsonBody("PATCH", update))
 }
 
-export function sendChat(message: string) {
-  return apiJson<ChatReply>("/api/chat", jsonBody("POST", { message }))
+export function listChatSessions() {
+  return apiJson<ChatSessionSummary[]>("/api/chat/sessions", { cache: "no-store" })
 }
 
-export function getChatHistory() {
-  return apiJson<ChatMessage[]>("/api/chat/history")
+export function createChatSession(title?: string) {
+  return apiJson<ChatSessionSummary>("/api/chat/sessions", jsonBody("POST", title ? { title } : {}))
 }
 
-export function clearChatHistory() {
-  return apiJson<unknown>("/api/chat/history", { method: "DELETE" })
+export function deleteChatSession(id: string) {
+  return apiJson<unknown>(`/api/chat/sessions/${encodeURIComponent(id)}`, { method: "DELETE" })
+}
+
+export function getSessionMessages(id: string) {
+  return apiJson<ChatMessage[]>(`/api/chat/sessions/${encodeURIComponent(id)}/messages`, { cache: "no-store" })
+}
+
+export function sendSessionMessage(id: string, message: string) {
+  return apiJson<ChatReply>(`/api/chat/sessions/${encodeURIComponent(id)}/messages`, jsonBody("POST", { message }))
+}
+
+export function openTaskSession(taskId: string) {
+  return apiJson<{ sessionId: string; created: boolean }>("/api/chat/sessions/open-task", jsonBody("POST", { taskId }))
 }
 
 export function saveWord(word: string, context?: string) {

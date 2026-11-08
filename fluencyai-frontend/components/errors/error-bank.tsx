@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { Loader2, SpellCheck, Sparkles } from "lucide-react"
+import { ArrowLeft, Loader2, SpellCheck, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth/auth-provider"
@@ -69,6 +69,10 @@ export function ErrorBank() {
 
   return (
     <div className="flex flex-col max-w-2xl mx-auto w-full gap-6 px-4 py-8 sm:py-12">
+      <Link href="/chat" className="inline-flex items-center gap-1.5 self-start text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <ArrowLeft className="w-4 h-4" />
+        Conversas
+      </Link>
       <div className="flex flex-col items-center text-center gap-2">
         <div className="w-14 h-14 rounded-full bg-cat-streak flex items-center justify-center mb-2">
           <SpellCheck className="w-6 h-6 text-foreground" />

@@ -84,6 +84,14 @@ export interface ChatMessage {
   correction?: Correction
 }
 
+export interface ChatSessionSummary {
+  id: string
+  title: string
+  topic: string | null
+  updatedAt: string
+  preview: string
+}
+
 export interface ChatReply {
   reply: string
   correction?: Correction
