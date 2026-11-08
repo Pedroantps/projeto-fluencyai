@@ -188,6 +188,37 @@
   * { scroll-behavior: auto !important; }
 }
 
+/* Login: papel pautado de caderno, com linha de margem */
+.paper-ruled {
+  background-image:
+    linear-gradient(to right, transparent 27px, color-mix(in oklab, var(--cat-streak) 70%, transparent) 27px 28px, transparent 28px),
+    repeating-linear-gradient(to bottom, transparent 0 35px, color-mix(in oklab, var(--border) 45%, transparent) 35px 36px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 62%, transparent 92%);
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 62%, transparent 92%);
+}
+
+/* Traço de caneta que se desenha uma vez */
+@keyframes pen-draw {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+.pen-draw {
+  stroke-dasharray: 100;
+  animation: pen-draw 700ms cubic-bezier(0.2, 0.8, 0.2, 1) 450ms both;
+}
+
+/* Três pontinhos de "digitando" */
+@keyframes typing-dot {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
+}
+.typing-dot { animation: typing-dot 1s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pen-draw, .typing-dot { animation: none; }
+  .typing-dot { opacity: 0.6; }
+}
+
 /* Efeitos 3D para os Flashcards */
 .perspective-1000 {
   perspective: 1000px;

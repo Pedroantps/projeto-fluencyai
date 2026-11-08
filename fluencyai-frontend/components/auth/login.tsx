@@ -1,10 +1,73 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Sparkles, Flame, Volume2, Check, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { auth, googleProvider } from "@/lib/firebase"
-import { Logo } from "@/components/brand/logo"
+import { Logo, LogoMark } from "@/components/brand/logo"
+import { cn } from "@/lib/utils"
+
+const GREETINGS = ["Hi, I'm Ana!", "Ready to talk?", "Let's practice!"]
+
+/** Balãozinho da Ana saindo da logo: digita e alterna cumprimentos (ciclo de ~3,2 s). */
+function AnaGreeting({ className }: { className?: string }) {
+  const [index, setIndex] = useState(0)
+  const [typing, setTyping] = useState(false)
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    let timer: ReturnType<typeof setTimeout>
+    const cycle = (i: number) => {
+      timer = setTimeout(() => {
+        setTyping(true)
+        timer = setTimeout(() => {
+          setTyping(false)
+          setIndex((i + 1) % GREETINGS.length)
+          cycle(i + 1)
+        }, 900)
+      }, 2300)
+    }
+    cycle(0)
+    return () => clearTimeout(timer)
+  }, [])
+
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "flex h-9 items-center whitespace-nowrap rounded-2xl rounded-bl-md bg-cat-chat px-3.5 text-[13px] font-medium text-foreground",
+        className
+      )}
+    >
+      {typing ? (
+        <span className="flex items-center gap-1 px-1">
+          {[0, 1, 2].map((d) => (
+            <span key={d} className="typing-dot h-1.5 w-1.5 rounded-full bg-foreground" style={{ animationDelay: `${d * 160}ms` }} />
+          ))}
+        </span>
+      ) : (
+        <span key={index} className="animate-in fade-in slide-in-from-bottom-1 duration-200">
+          {GREETINGS[index]}
+        </span>
+      )}
+    </span>
+  )
+}
+
+/** "FluencyAI" com o AI azul sublinhado por um traço de caneta. */
+function BrandName() {
+  return (
+    <>
+      Fluency
+      <span className="relative inline-block text-primary">
+        AI
+        <svg viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden="true" className="absolute -bottom-2.5 left-[-4%] h-2.5 w-[108%] overflow-visible">
+          <path d="M2 8 C 28 3, 62 2, 98 6" pathLength={100} fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" vectorEffect="non-scaling-stroke" className="pen-draw" />
+        </svg>
+      </span>
+    </>
+  )
+}
 
 function GoogleMark() {
   return (
@@ -89,37 +152,59 @@ export function Login() {
       .finally(() => setSigningIn(false));
   }
 
+  const googleButton = (
+    <button
+      type="button"
+      onClick={handleLogin}
+      disabled={signingIn}
+      aria-busy={signingIn}
+      className="relative flex min-h-14 w-full max-w-sm items-center justify-center rounded-full bg-primary py-2 pl-14 pr-5 text-[15px] font-medium text-primary-foreground transition-[background-color,transform] duration-150 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-px hover:bg-primary/90 active:translate-y-px active:scale-[0.985] disabled:cursor-wait disabled:opacity-80 min-[360px]:px-14 sm:text-base lg:max-w-none"
+    >
+      <span className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white">
+        {signingIn ? <Loader2 className="h-5 w-5 animate-spin text-[#1E44C4]" aria-hidden="true" /> : <GoogleMark />}
+      </span>
+      <span className="whitespace-nowrap">{signingIn ? "Abrindo o Google…" : "Continuar com o Google"}</span>
+    </button>
+  )
+
+  const footnote = "Você entra com sua conta Google, sem criar outra senha."
+
   return (
-    <main className="grid min-h-dvh bg-background p-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-3">
-      <section className="mx-auto flex w-full max-w-xl flex-col px-4 py-6 sm:px-10 sm:py-10 lg:mx-0 lg:max-w-none lg:px-14 xl:px-20">
+    <main className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-3 lg:p-3">
+      {/* Celular e tablet: tudo centralizado, marca no alto e botão na zona do polegar */}
+      <section className="relative isolate mx-auto flex w-full max-w-md flex-col items-center px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(4.5rem,14dvh)] text-center lg:hidden">
+        <div aria-hidden="true" className="paper-ruled absolute inset-0 -z-10" />
+        <div className="relative">
+          <LogoMark className="h-20 w-20" />
+          <AnaGreeting className="absolute bottom-[calc(100%-6px)] left-[calc(100%-10px)]" />
+        </div>
+        <h1 className="mt-7 text-4xl font-medium leading-none tracking-tight text-foreground"><BrandName /></h1>
+        <p className="mt-3 max-w-[28ch] text-sm text-muted-foreground text-pretty">
+          Converse em inglês com a Ana, sua professora de IA, um pouco por dia.
+        </p>
+
+        <div className="mt-[max(2.5rem,12dvh)] flex w-full justify-center">{googleButton}</div>
+        <p className="mt-auto max-w-[32ch] pt-10 text-xs text-muted-foreground text-pretty">{footnote}</p>
+      </section>
+
+      {/* Desktop */}
+      <section className="relative isolate hidden flex-col px-14 py-10 lg:flex xl:px-20">
+        <div aria-hidden="true" className="paper-ruled absolute inset-0 -z-10" />
         <Logo />
 
         <div className="my-auto flex w-full max-w-md flex-col gap-8 py-12">
           <div className="flex flex-col gap-4">
-            <h1 className="text-4xl font-medium leading-[1.05] tracking-tight text-foreground text-balance sm:text-5xl">
-              Bem-vindo ao FluencyAI
+            <h1 className="text-5xl font-medium leading-[1.05] tracking-tight text-foreground text-balance">
+              Bem-vindo ao <span className="whitespace-nowrap"><BrandName /></span>
             </h1>
             <p className="max-w-[40ch] text-base text-muted-foreground text-pretty">
               Entre para praticar inglês com a Ana, sua professora de IA.
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={handleLogin}
-            disabled={signingIn}
-            aria-busy={signingIn}
-            className="flex h-14 w-full items-center gap-3 rounded-full bg-primary py-2 pl-2 pr-6 font-medium text-primary-foreground transition-[background-color,transform] hover:bg-primary/90 active:scale-[0.99] disabled:cursor-wait disabled:opacity-80"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white">
-              {signingIn ? <Loader2 className="h-5 w-5 animate-spin text-[#1E44C4]" aria-hidden="true" /> : <GoogleMark />}
-            </span>
-            <span className="flex-1 text-center">{signingIn ? "Abrindo o Google…" : "Continuar com o Google"}</span>
-            <span className="w-10 shrink-0" aria-hidden="true" />
-          </button>
+          {googleButton}
         </div>
 
-        <p className="text-xs text-muted-foreground">Você entra com sua conta Google, sem criar outra senha.</p>
+        <p className="text-xs text-muted-foreground">{footnote}</p>
       </section>
 
       <div className="hidden lg:block">
