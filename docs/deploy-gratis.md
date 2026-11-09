@@ -23,10 +23,10 @@ Ordem: repositório → Supabase → Firebase → chaves de IA → Azure → Ren
 2. **Project Settings → Database → Connection string → Session pooler** (porta `5432`, host `*.pooler.supabase.com`). Monte a URL final:
 
    ```
-   postgresql://postgres.<ref>:<senha>@aws-0-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require
+   postgresql://postgres.<ref>:<senha>@aws-0-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=no-verify
    ```
 
-   Use o **Session pooler**, não a conexão direta: a direta pode ser só IPv6 e o Render não garante IPv6.
+   Use o **Session pooler**, não a conexão direta (`db.<ref>.supabase.co`): a direta é só IPv6 e o Render falha com `ENETUNREACH`. Use `sslmode=no-verify`, porque o driver `pg` pode recusar o certificado do pooler com `require`.
 3. Aplique as 9 migrations da sua máquina:
 
    ```bash
