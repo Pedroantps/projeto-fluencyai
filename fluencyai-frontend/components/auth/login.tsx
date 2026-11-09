@@ -158,7 +158,7 @@ export function Login() {
       onClick={handleLogin}
       disabled={signingIn}
       aria-busy={signingIn}
-      className="relative flex min-h-14 w-full max-w-sm items-center justify-center rounded-full bg-primary py-2 pl-14 pr-5 text-[15px] font-medium text-primary-foreground transition-[background-color,transform] duration-150 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-px hover:bg-primary/90 active:translate-y-px active:scale-[0.985] disabled:cursor-wait disabled:opacity-80 min-[360px]:px-14 sm:text-base lg:max-w-none"
+      className="relative flex min-h-14 w-full max-w-[300px] items-center justify-center rounded-full bg-primary py-2 pl-14 pr-5 text-[15px] font-medium text-primary-foreground transition-[background-color,transform] duration-150 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-px hover:bg-primary/90 active:translate-y-px active:scale-[0.985] disabled:cursor-wait disabled:opacity-80 min-[360px]:px-14 sm:text-base lg:max-w-none"
     >
       <span className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white">
         {signingIn ? <Loader2 className="h-5 w-5 animate-spin text-[#1E44C4]" aria-hidden="true" /> : <GoogleMark />}
@@ -183,7 +183,7 @@ export function Login() {
           Converse em inglês com a Ana, sua professora de IA, um pouco por dia.
         </p>
 
-        <div className="mt-[max(2.5rem,12dvh)] flex w-full justify-center">{googleButton}</div>
+        <div className="mt-[max(4rem,20dvh)] flex w-full justify-center">{googleButton}</div>
         <p className="mt-auto max-w-[32ch] pt-10 text-xs text-muted-foreground text-pretty">{footnote}</p>
       </section>
 
