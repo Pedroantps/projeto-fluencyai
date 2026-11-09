@@ -81,10 +81,12 @@ O Kokoro não cabe nos 512 MB do Render Free, então a voz roda no Azure.
    |---|---|
    | Root Directory | `fluencyai-backend` |
    | Runtime | Node |
-   | Build Command | `npm ci && npm run build` |
+   | Build Command | `npm ci --include=dev && npm run build` |
    | Start Command | `npm start` |
    | Health Check Path | `/health` |
    | Instance Type | **Free** |
+
+   O `--include=dev` é obrigatório: o Render define `NODE_ENV=production`, o `npm ci` pularia os `@types/*` e o `tsc` falharia.
 
    O campo **Pre-Deploy Command** não existe no plano Free. As migrations já foram aplicadas no passo 1. Quando criar uma migration nova, rode `npm run db:deploy` da sua máquina antes de subir o código.
 3. Em **Environment**, cadastre:
