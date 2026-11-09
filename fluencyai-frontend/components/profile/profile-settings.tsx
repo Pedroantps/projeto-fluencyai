@@ -58,6 +58,9 @@ export function ProfileSettings() {
   const [themeReady, setThemeReady] = useState(false)
   useEffect(() => setThemeReady(true), [])
   const [user, setUser] = useState<firebase.User | null>(null)
+  // Nome exibido em estado próprio: copiar o objeto do Firebase ({ ...user }) perde
+  // photoURL/email, que são getters do protótipo.
+  const [displayName, setDisplayName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const [showLogoutModal, setShowLogoutModal] = useState(false)
@@ -85,6 +88,7 @@ export function ProfileSettings() {
     let cancelled = false
     const load = async () => {
       setUser(authUser)
+      setDisplayName(authUser?.displayName ?? null)
       if (authUser?.displayName) setEditName(authUser.displayName)
 
       if (authUser) {
@@ -148,12 +152,13 @@ export function ProfileSettings() {
   }
 
   const handleSaveProfile = async () => {
-    if (!user || !editName.trim()) return;
+    const name = editName.trim();
+    if (!user || !name) return;
     setIsSavingProfile(true);
     try {
-      await updateProfile(user, { displayName: editName });
+      await updateProfile(user, { displayName: name });
       setShowEditModal(false);
-      setUser({ ...user, displayName: editName } as firebase.User);
+      setDisplayName(name);
     } catch (error) {
       console.error("Erro ao atualizar perfil:", error);
     } finally {
@@ -189,14 +194,14 @@ export function ProfileSettings() {
           {user?.photoURL ? (
             <img 
               src={user.photoURL} 
-              alt={user.displayName || "Perfil"} 
+              alt={displayName || "Perfil"}
               className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-card"
               referrerPolicy="no-referrer"
             />
           ) : (
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-primary flex items-center justify-center">
               <span className="text-2xl sm:text-3xl font-medium text-primary-foreground">
-                {getInitials(user?.displayName)}
+                {getInitials(displayName)}
               </span>
             </div>
           )}
@@ -207,7 +212,7 @@ export function ProfileSettings() {
         
         <div className="text-center w-full px-4">
           <h2 className="text-2xl font-medium tracking-tight text-foreground truncate">
-            {user?.displayName || "Usuário FluencyAI"}
+            {displayName || "Usuário FluencyAI"}
           </h2>
           <p className="text-xs sm:text-sm text-foreground/70 truncate">
             {user?.email || "Email não informado"}
