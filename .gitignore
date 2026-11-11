@@ -50,4 +50,14 @@ Thumbs.db
 # CACHES DA VERCEL / NEXT.JS
 # =========================================
 .vercel
-.eslintcache*.tsbuildinfo
+.eslintcache
+*.tsbuildinfo
+
+
+# =========================================
+# DOCS E FERRAMENTAS LOCAIS (so o README vai pro repo)
+# =========================================
+docs/*.md
+docs/superpowers/
+.claude/
+.superpowers/
